@@ -1,0 +1,3815 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>Trial Fetch</title>
+
+<script>
+  (function(){
+    try {
+      const saved = localStorage.getItem('tf-theme');
+      const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = (saved === 'dark' || saved === 'light') ? saved : (systemDark ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+    } catch(e) {
+      document.documentElement.dataset.theme = 'light';
+    }
+  })();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    color-scheme: light;
+    --bg: #F3EFE9;
+    --bg-dot: #ffffff80;
+    --bg-translucent: rgba(243, 239, 233, 0.86);
+    --card: #E4DFD6;
+    --card-light: #FBF9F5;
+
+    --pink: #F6C9DB;
+    --pink-deep: #E8A9C6;
+    --blue: #C3E4F5;
+    --blue-strong: #8ECDEA;
+    --yellow: #FFEEA8;
+    --yellow-deep: #F0D97E;
+    --green: #BDE5C8;
+    --green-deep: #7DBE90;
+    --green-ink: #2F6B40;
+    --purple: #DBCBF0;
+    --purple-deep: #C0A8E0;
+    --red: #F2A0A0;
+    --red-deep: #E85D5D;
+    --red-ink: #B03636;
+
+    --ink: #3A3733;
+    --ink-soft: #8A857E;
+    --outline: #B3AEA6;
+    --overlay: rgba(58,55,51,0.45);
+    --shadow: var(--outline);
+
+    --title-color: var(--ink);
+    --title-shadow: var(--pink);
+    --on-accent: #3A3733;
+
+    --toast-success-bg: var(--green);
+    --toast-error-bg: #F7C6C6;
+    --toast-info-bg: var(--blue);
+    --toast-warning-bg: var(--yellow);
+    --toast-ink: #3A3733;
+  }
+
+  [data-theme="dark"]{
+    color-scheme: dark;
+    --bg: #262322;
+    --bg-dot: #ffffff24;
+    --bg-translucent: rgba(38, 35, 34, 0.88);
+    --card: #3C3835;
+    --card-light: #2F2C2A;
+
+    --pink: #E9A8C4;
+    --pink-deep: #C77FA2;
+    --blue: #8FC8E4;
+    --blue-strong: #6FBEE3;
+    --yellow: #E8D38A;
+    --yellow-deep: #C9AF5C;
+    --green: #6FA87F;
+    --green-deep: #557f63;
+    --green-ink: #A8E0B8;
+    --purple: #A88FC9;
+    --purple-deep: #8A6BB0;
+    --red: #C96A6A;
+    --red-deep: #E86A6A;
+    --red-ink: #FFB0B0;
+
+    --ink: #D8D2C8;
+    --ink-soft: #9A938A;
+    --outline: #57524C;
+    --overlay: rgba(0,0,0,0.6);
+    --shadow: #191614;
+
+    --title-color: var(--pink);
+    --title-shadow: #6E2F49;
+
+    --toast-success-bg: #33503C;
+    --toast-error-bg: #5A3434;
+    --toast-info-bg: #2E4A5C;
+    --toast-warning-bg: #54481F;
+    --toast-ink: #F2EEE7;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+
+  body{
+    background: var(--bg);
+    background-image: radial-gradient(circle, var(--bg-dot) 1.5px, transparent 1.5px);
+    background-size: 22px 22px;
+    background-attachment: fixed;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 500;
+    color: var(--ink);
+    min-height: 100vh;
+    transition: background-color .25s ease, color .25s ease;
+  }
+
+  .wrap{
+    max-width: 640px;
+    margin: 0 auto;
+    padding: clamp(16px, 3vw, 28px) clamp(16px, 3vw, 24px) 80px;
+    /* Pengaman anti-luber horizontal: pakai clip (BUKAN hidden) supaya
+       position:sticky (tabbar/topbar) tetap berfungsi. Mencegah teks
+       panjang tanpa spasi membuat halaman bisa digeser menyamping. */
+    overflow-x: clip;
+  }
+
+  .topbar{
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 18px;
+    transition: background-color .2s ease;
+  }
+
+  .icon-btn{
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    line-height: 1;
+    border-radius: 50%;
+    background: var(--card-light);
+    border: 3px solid var(--ink);
+    box-shadow: 3px 3px 0 var(--shadow);
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease, background-color .2s ease;
+    user-select: none;
+  }
+
+  .icon-btn:hover{ transform: translateY(-2px) rotate(8deg); }
+  .icon-btn:active{ transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  #theme-toggle{ background: var(--blue); color: var(--on-accent); }
+  #info-btn{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    background: var(--yellow);
+    color: var(--on-accent);
+  }
+
+  header{ text-align: center; margin-bottom: 30px; }
+
+  /* ============================================================
+     TAB NAVIGASI (Ambil / Cari / Tersimpan / Antrean)
+     Tiap fitur menempati "lahan" sendiri supaya satu halaman tidak
+     menumpuk semua panel. Sticky hanya di mobile — di desktop (di mana
+     topbar ikut sticky) tabbar dibiarkan statis supaya tidak berebut
+     posisi dengan topbar.
+     ============================================================ */
+  .tabbar{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    padding: 6px 10px;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: var(--bg-translucent);
+    border: 3px solid var(--ink);
+    border-radius: 999px;
+    box-shadow: 4px 4px 0 var(--shadow);
+  }
+
+  .tab-arrow{
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1;
+    padding: 0 0 3px;
+    border-radius: 50%;
+    background: var(--card-light);
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+  .tab-arrow:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  .tab-current{
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+  }
+
+  #tab-current-name{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .tab-dots{ display: flex; gap: 10px; }
+
+  .tab-dot{
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--card);
+    cursor: pointer;
+  }
+  .tab-dot.active{
+    background: var(--pink-deep);
+    transform: scale(1.3);
+  }
+
+  .tab-page{ display: none; }
+  .tab-page.active{ display: block; animation: chip-in .2s ease; }
+
+  .tab-hint{
+    text-align: center;
+    padding: 30px 16px;
+    border: 3px dashed var(--outline);
+    border-radius: 20px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+  h1{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: clamp(34px, 6vw, 54px);
+    letter-spacing: 0.5px;
+    margin: 0;
+    color: var(--title-color);
+    text-shadow: 3px 3px 0 var(--title-shadow);
+    transition: color .25s ease, text-shadow .25s ease;
+  }
+
+  button{
+    font-family: 'Baloo 2', sans-serif;
+    color: var(--ink);
+    background: var(--card);
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform .08s ease, box-shadow .08s ease,
+                background-color .15s ease, filter .15s ease;
+  }
+
+  button:focus-visible,
+  input:focus-visible{
+    outline: 3px solid var(--blue-strong);
+    outline-offset: 2px;
+  }
+
+  .panel{
+    background: var(--card-light);
+    border: 3px solid var(--ink);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 6px 6px 0 var(--shadow);
+    margin-bottom: 26px;
+    transition: background-color .25s ease;
+  }
+
+  .panel-label{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-label::before{
+    content: '';
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--pink);
+    border: 2px solid var(--ink);
+    flex-shrink: 0;
+  }
+
+  .panel-label-row{ margin: 0 0 10px 2px; }
+
+  .input-row{ display: flex; gap: 10px; }
+
+  .input-row input{
+    flex: 1;
+    min-width: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 13px 14px;
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--ink);
+    outline: none;
+    transition: background-color .15s ease, box-shadow .15s ease;
+  }
+
+  .input-row input:focus{
+    background: var(--card-light);
+    box-shadow: 0 0 0 3px var(--blue);
+  }
+
+  .input-row input::placeholder{ color: var(--ink-soft); }
+
+  .mini-toggle{
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 10px; cursor: pointer; user-select: none;
+    font-size: 12px; color: var(--ink-soft);
+  }
+  .mini-toggle input{ position: absolute; opacity: 0; pointer-events: none; }
+  .mini-toggle-box{
+    width: 30px; height: 17px; border-radius: 999px; flex-shrink: 0;
+    border: 3px solid var(--ink); background: var(--bg);
+    position: relative; transition: background-color .15s ease;
+  }
+  .mini-toggle-box::after{
+    content: ''; position: absolute; top: 1px; left: 1px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--ink); transition: left .15s ease;
+  }
+  .mini-toggle input:checked + .mini-toggle-box{ background: var(--blue); }
+  .mini-toggle input:checked + .mini-toggle-box::after{ left: 14px; background: #fff; }
+  .mini-toggle input:focus-visible + .mini-toggle-box{ box-shadow: 0 0 0 3px var(--blue); }
+  .mini-toggle-note{ opacity: .75; }
+
+  .btn-fetch{
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #FFFFFF;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
+    background: var(--red-deep);
+    padding: 0 20px;
+    box-shadow: 4px 4px 0 var(--ink);
+    white-space: nowrap;
+  }
+
+  .btn-fetch:hover{
+    transform: translate(-1px,-1px);
+    box-shadow: 5px 5px 0 var(--ink);
+    filter: brightness(1.06);
+  }
+
+  .btn-fetch:active{
+    transform: translate(3px,3px);
+    box-shadow: 1px 1px 0 var(--ink);
+  }
+
+  .btn-reset{
+    flex-shrink: 0;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    background: var(--card);
+    padding: 0 16px;
+    box-shadow: 4px 4px 0 var(--shadow);
+  }
+
+  .btn-reset:hover{ background: var(--yellow); color: var(--on-accent); }
+  .btn-reset:active{ transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  .input-row input:disabled{ opacity: .6; }
+  .btn-fetch:disabled, .btn-reset:disabled{
+    opacity: .5; cursor: not-allowed; transform: none !important;
+  }
+
+  .input-row input.shake{ animation: shake-anim .4s ease; }
+  @keyframes shake-anim{
+    0%,100%{ transform: translateX(0); }
+    20%{ transform: translateX(-6px); }
+    40%{ transform: translateX(6px); }
+    60%{ transform: translateX(-4px); }
+    80%{ transform: translateX(4px); }
+  }
+
+  .queue-head{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 2px 12px;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .queue-count{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--on-accent);
+    background: var(--pink);
+    border: 2.5px solid var(--ink);
+    border-radius: 999px;
+    padding: 3px 12px;
+  }
+
+  .chapter-list{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .empty-state{
+    text-align: center;
+    padding: 44px 20px;
+    border: 3px dashed var(--outline);
+    border-radius: 20px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.7;
+    transition: border-color .25s ease;
+  }
+
+  .empty-state .empty-emoji{
+    display: block;
+    font-size: 34px;
+    margin-bottom: 10px;
+  }
+
+  .chip-row{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--card-light);
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 4px 4px 0 var(--shadow);
+    transition: transform .12s ease, box-shadow .12s ease, background-color .25s ease;
+    animation: chip-in .25s ease;
+  }
+
+  @keyframes chip-in{
+    from{ opacity: 0; transform: translateY(-8px); }
+    to{ opacity: 1; transform: translateY(0); }
+  }
+
+  .chip-row:nth-child(3n+1){ transform: rotate(-0.5deg); }
+  .chip-row:nth-child(3n+2){ transform: rotate(0.4deg); }
+  .chip-row:nth-child(3n){ transform: rotate(-0.25deg); }
+
+  .chip-row:hover{
+    transform: rotate(0deg) translateY(-2px);
+    box-shadow: 4px 6px 0 var(--shadow);
+  }
+
+  .chip-head{ display: flex; align-items: center; gap: 10px; }
+
+  .chip-num{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+    color: var(--on-accent);
+    background: var(--yellow);
+    border: 2.5px solid var(--ink);
+    border-radius: 999px;
+    padding: 4px 11px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .chip-badge{
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--on-accent);
+    background: var(--blue);
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+  }
+
+  .chip-badge.jjaptoon{ background: var(--pink); }
+  .chip-badge.jjabtoon{ background: var(--red); }
+  .chip-badge.goodtoon{ background: var(--blue-strong); }
+  .chip-badge.baozimh{ background: var(--yellow); }
+  .chip-badge.manwa{ background: var(--blue); }
+  .chip-badge.wmanhua{ background: var(--purple); }
+  .chip-badge.koudaimh{ background: var(--green); }
+
+  .chip-status{
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .chip-status.done{ color: var(--green-ink); font-weight: 700; }
+  .chip-status.active{ color: var(--red-deep); font-weight: 700; }
+  .chip-status.error{ color: var(--red-ink); font-weight: 700; }
+
+  .chip-row.error{ border-color: var(--red-deep); }
+
+  .chip-body{ min-width: 0; }
+
+  .chip-comic-title{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    line-height: 1.3;
+    margin: 0 0 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .chip-chapter-title{
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--red-deep);
+    margin: 0 0 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chip-page-count{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+
+  .chip-progress-row{ display: flex; align-items: center; gap: 10px; }
+
+  .btn-dl-mini{
+    flex-shrink: 0;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    color: #FFFFFF;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+    background: var(--green-deep);
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 var(--ink);
+    width: 100%;
+  }
+  .btn-dl-mini:hover{ transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--ink); }
+  .btn-dl-mini:active{ transform: translate(2px,2px); box-shadow: 0 0 0 var(--ink); }
+  .btn-dl-mini:disabled{
+    opacity: .5; cursor: not-allowed;
+    transform: none !important;
+    box-shadow: 2px 2px 0 var(--ink) !important;
+  }
+
+  .chip-thumbs{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .chip-thumbs img{
+    width: 100%;
+    aspect-ratio: 3/4;
+    object-fit: cover;
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    background: var(--card);
+  }
+
+  .chip-thumbs-more{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 3/4;
+    border: 2px dashed var(--outline);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  .progress-mini{
+    flex: 1;
+    height: 8px;
+    background: var(--bg);
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-mini > div{
+    height: 100%;
+    background: var(--blue-strong);
+    transition: width .2s ease;
+  }
+
+  .toast-container{
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(92vw, 420px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 300;
+    pointer-events: none;
+  }
+
+  .toast{
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--toast-info-bg);
+    color: var(--toast-ink);
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    padding: 12px 14px 14px;
+    box-shadow: 4px 4px 0 var(--shadow);
+    font-weight: 600;
+    font-size: 13.5px;
+    line-height: 1.45;
+    position: relative;
+    overflow: hidden;
+    animation: toast-in .3s cubic-bezier(.2,.9,.3,1.2);
+    transition: opacity .25s ease, transform .25s ease;
+  }
+
+  .toast.leaving{ opacity: 0; transform: translateY(-10px) scale(.96); }
+
+  @keyframes toast-in{
+    from{ opacity: 0; transform: translateY(-16px) scale(.95); }
+    to{ opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .toast.success{ background: var(--toast-success-bg); }
+  .toast.error{ background: var(--toast-error-bg); }
+  .toast.info{ background: var(--toast-info-bg); }
+  .toast.warning{ background: var(--toast-warning-bg); }
+
+  .toast-icon{
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    border: 2.5px solid var(--ink);
+    border-radius: 50%;
+    background: var(--card-light);
+    color: var(--ink);
+  }
+
+  .toast-msg{ flex: 1; min-width: 0; padding-top: 2px; word-break: break-word; }
+
+  .toast-close{
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1;
+    padding: 4px;
+    cursor: pointer;
+    opacity: .7;
+    border-radius: 6px;
+  }
+  .toast-close:hover{ opacity: 1; }
+
+  .toast-bar{
+    position: absolute;
+    left: 0; bottom: 0;
+    height: 4px;
+    width: 100%;
+    background: var(--ink);
+    opacity: .35;
+    transform-origin: left;
+    animation: toast-bar linear forwards;
+  }
+
+  @keyframes toast-bar{
+    from{ transform: scaleX(1); }
+    to{ transform: scaleX(0); }
+  }
+
+  .info-overlay{
+    position: fixed;
+    inset: 0;
+    background: var(--overlay);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease;
+    z-index: 200;
+  }
+
+  .info-overlay.open{ opacity: 1; pointer-events: auto; }
+
+  .info-sheet{
+    width: 100%;
+    max-width: 640px;
+    background: var(--card-light);
+    border: 3px solid var(--ink);
+    border-bottom: none;
+    border-radius: 22px 22px 0 0;
+    padding: 24px 20px 28px;
+    box-shadow: 0 -6px 0 var(--shadow);
+    transform: translateY(8px);
+    transition: transform .15s ease, background-color .25s ease;
+  }
+
+  .info-overlay.open .info-sheet{ transform: translateY(0); }
+
+  .info-sheet-title{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+
+  .info-sheet-desc{
+    color: var(--ink-soft);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+
+  .site-chips{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-bottom: 22px;
+  }
+
+  .site-chip{
+    background: var(--blue);
+    color: var(--on-accent);
+    border: 2.5px solid var(--ink);
+    border-radius: 999px;
+    padding: 7px 15px;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+
+  .site-chip:nth-child(2){ background: var(--pink); }
+  .site-chip:nth-child(3){ background: var(--blue); }
+  .site-chip:nth-child(4){ background: var(--purple); }
+  .site-chip:nth-child(5){ background: var(--green); }
+  .site-chip:nth-child(7){ background: var(--yellow); }
+
+  .btn-close{
+    width: 100%;
+    font-weight: 700;
+    font-size: 14px;
+    background: var(--bg);
+    padding: 12px;
+    box-shadow: 3px 3px 0 var(--shadow);
+  }
+  .btn-close:active{ transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  /* ============================================================
+     SERIES CHAPTER PICKER (modal pilih chapter dari URL series)
+     Memakai pola visual yang sama dengan .info-overlay/.info-sheet,
+     tapi kontennya butuh tinggi lebih besar + scroll karena daftar
+     chapter bisa berjumlah ratusan.
+     ============================================================ */
+  .series-sheet{
+    width: 100%;
+    max-width: 640px;
+    max-height: 85vh;
+    background: var(--card-light);
+    border: 3px solid var(--ink);
+    border-bottom: none;
+    border-radius: 22px 22px 0 0;
+    padding: 20px 20px 16px;
+    box-shadow: 0 -6px 0 var(--shadow);
+    transform: translateY(8px);
+    transition: transform .15s ease, background-color .25s ease;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .info-overlay.open .series-sheet{ transform: translateY(0); }
+
+  .series-sheet-title{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    margin-bottom: 2px;
+    word-break: break-word;
+  }
+
+  .series-sheet-count{
+    color: var(--ink-soft);
+    font-size: 12.5px;
+    font-weight: 600;
+    margin: 0 0 14px;
+  }
+
+  .series-range-row{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .series-range-row input[type="number"]{
+    width: 68px;
+    padding: 8px 10px;
+    border: 2.5px solid var(--ink);
+    border-radius: 10px;
+    background: var(--card);
+    color: var(--ink);
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .series-range-row input[type="number"]:focus{
+    outline: none;
+    border-color: var(--blue-strong);
+  }
+
+  .series-range-label{
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+
+  .btn-range-apply{
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 8px 12px;
+    background: var(--blue);
+    box-shadow: 2px 2px 0 var(--shadow);
+    white-space: nowrap;
+  }
+  .btn-range-apply:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  .series-bulk-row{
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .btn-bulk{
+    flex: 1;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 8px;
+    background: var(--card);
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+  .btn-bulk:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  .series-chapter-list{
+    flex: 1;
+    overflow-y: auto;
+    border: 2.5px solid var(--ink);
+    border-radius: 14px;
+    background: var(--bg);
+    margin-bottom: 14px;
+    min-height: 120px;
+  }
+
+  .series-chapter-item{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1.5px solid var(--card);
+    cursor: pointer;
+  }
+  .series-chapter-item:last-child{ border-bottom: none; }
+  .series-chapter-item:active{ background: var(--card); }
+
+  .series-chapter-item input[type="checkbox"]{
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    accent-color: var(--blue-strong);
+  }
+
+  .series-chapter-item-title{
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .series-sheet-footer{
+    display: flex;
+    gap: 10px;
+  }
+
+  .series-sheet-footer .btn-close{
+    flex: 1;
+    background: var(--bg);
+  }
+
+  .btn-series-confirm{
+    flex: 2;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 12px;
+    background: var(--green);
+    box-shadow: 3px 3px 0 var(--shadow);
+  }
+  .btn-series-confirm:active{ transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--shadow); }
+  .btn-series-confirm:disabled{ opacity: .5; cursor: not-allowed; }
+
+  .series-loading{
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 13.5px;
+  }
+
+  /* ============================================================
+     CARI JUDUL + SERIES TERSIMPAN (fitur baru)
+     Memakai token visual yang sama (panel, chip, badge) supaya
+     menyatu dengan tema yang sudah ada.
+     ============================================================ */
+  .search-sources{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .search-chip{
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 7px 14px;
+    background: var(--card);
+    box-shadow: 2px 2px 0 var(--shadow);
+    border-radius: 999px;
+  }
+  .search-chip:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
+  .search-chip.active{ background: var(--pink); color: var(--on-accent); }
+
+  .search-results{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  .search-item{
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: var(--bg);
+    border: 2.5px solid var(--ink);
+    border-radius: 14px;
+    padding: 10px 12px;
+  }
+
+  .search-item img{
+    width: 48px;
+    height: 64px;
+    object-fit: cover;
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    background: var(--card);
+    flex-shrink: 0;
+  }
+
+  .search-item-noimg{
+    width: 48px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    border: 2px dashed var(--outline);
+    border-radius: 8px;
+    color: var(--ink-soft);
+    flex-shrink: 0;
+  }
+
+  .search-item-body{ flex: 1; min-width: 0; }
+
+  .search-item-title{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.3;
+    margin: 0 0 4px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .search-item-sub{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+
+  .btn-pick{
+    flex-shrink: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 8px 14px;
+    background: var(--green);
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+  .btn-pick:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  .search-hint{
+    text-align: center;
+    padding: 18px 12px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .saved-row{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    /* min-width:0 WAJIB di kartu ini sendiri (bukan cuma di elemen dalam):
+       .saved-row adalah grid-item yang minimum-nya = konten terpanjang.
+       Tanpa ini, satu judul slug tanpa spasi memaksa seluruh kartu + daftar
+       lebih lebar dari layar (tombol Hapus terpotong). */
+    min-width: 0;
+    background: var(--card-light);
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    padding: 10px 12px;
+    box-shadow: 4px 4px 0 var(--shadow);
+    animation: chip-in .25s ease;
+  }
+
+  .saved-row-body{ min-width: 0; flex: 1; }
+
+  /* Baris atas kartu: cover + teks berdampingan (cover 44px agar kartu
+     tetap ramping di HP). */
+  .saved-top{
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .saved-cover{
+    width: 44px;
+    height: 58px;
+    object-fit: cover;
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    background: var(--card);
+    flex-shrink: 0;
+  }
+
+  .saved-cover-ph{
+    width: 44px;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 2px dashed var(--outline);
+    border-radius: 8px;
+    color: var(--ink-soft);
+    flex-shrink: 0;
+  }
+
+  /* Semua lapis teks kartu simpanan WAJIB bisa menyusut (min-width:0) dan
+     memenggal kata super-panjang (overflow-wrap:anywhere) — kalau satu saja
+     terlewat, URL/slug tanpa spasi memaksa kartu lebih lebar dari layar dan
+     halaman jadi bisa digeser/zoom menyamping di Chrome HP. */
+  .saved-row-body,
+  .saved-row-sub,
+  .saved-row-title,
+  .saved-top{ min-width: 0; }
+
+  .saved-row-title{ overflow-wrap: anywhere; }
+
+  .saved-row-title{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.35;
+    margin: 0 0 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    word-break: break-word;
+  }
+
+  .saved-row-sub{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .saved-row-sub .chip-badge{ flex-shrink: 0; }
+
+  /* Tombol aksi selalu di baris sendiri selebar kartu (tidak lagi
+     berdesakan dengan judul + URL dalam satu baris) — lega di HP. */
+  .saved-row-actions{
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-open{
+    flex: 1;
+    min-height: 36px;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 6px 14px;
+    background: var(--blue);
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+  .btn-open:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  .btn-del{
+    flex-shrink: 0;
+    min-height: 36px;
+    font-size: 12.5px;
+    font-weight: 800;
+    padding: 6px 16px;
+    background: var(--card);
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+  .btn-del:hover{ background: var(--red); color: #FFFFFF; text-shadow: 1px 1px 0 rgba(0,0,0,0.2); }
+  .btn-del:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  .btn-save-series{
+    width: 100%;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 10px;
+    /* Teks gelap eksplisit (jangan ikut var(--ink)): di mode gelap --ink
+       itu terang sehingga tulisan di atas kuning jadi pudar tidak terbaca. */
+    color: #3A3733;
+    background: var(--yellow);
+    box-shadow: 2px 2px 0 var(--shadow);
+    margin-bottom: 12px;
+  }
+  .btn-save-series:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  footer{
+    text-align: center;
+    margin-top: 44px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 12.5px;
+  }
+
+  /* ============================================================
+     TABLET / DEKSTOP KECIL (>= 768px)
+
+     PERBAIKAN BUG DOT: topbar sticky dibuat TRANSPARAN saat halaman
+     masih di atas (pola dot body tetap terlihat jelas di sekitar
+     tombol toggle). Latar semi-transparan baru diberikan lewat class
+     .scrolled setelah pengguna menggulir halaman, supaya konten
+     yang lewat di belakang topbar tidak menabrak tombol. Lihat JS
+     bagian "SCROLL-AWARE TOPBAR".
+     ============================================================ */
+  @media (min-width: 768px){
+    .wrap{
+      max-width: 760px;
+      padding: 28px 24px 90px;
+    }
+
+    /* Tabbar statis di desktop: topbar sudah sticky di sini, jadi tabbar
+       tidak ikut sticky supaya keduanya tidak tumpang tindih. */
+    .tabbar{
+      position: static;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .topbar{
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      margin: 0 -24px 18px;
+      padding: 14px 24px 10px;
+      background: transparent;
+    }
+
+    /* Saat sudah di-scroll, topbar dapat latar semi-transparan supaya
+       kartu chapter yang lewat di belakangnya tidak ikut terlihat.
+       Tidak pakai backdrop-filter (blur) karena itulah yang membuat
+       dot terlihat kabur/hilang. */
+    .topbar.scrolled{
+      background: var(--bg-translucent);
+    }
+
+    .panel{ padding: 26px; border-radius: 24px; box-shadow: 8px 8px 0 var(--shadow); }
+    .input-row input{ font-size: 14px; padding: 15px 16px; }
+    .btn-fetch{ font-size: 15px; padding: 0 28px; }
+    .btn-reset{ font-size: 14px; padding: 0 20px; }
+
+    .chip-row{ padding: 15px 18px; gap: 14px; }
+    .chip-num{ font-size: 14px; padding: 5px 13px; }
+    .chip-comic-title{ font-size: 18px; }
+    .chip-status{ font-size: 12px; }
+
+    .toast-container{
+      left: auto;
+      right: 24px;
+      top: 24px;
+      transform: none;
+      width: 380px;
+    }
+
+    .info-overlay{ align-items: center; }
+    .info-sheet{
+      max-width: 480px;
+      border-bottom: 3px solid var(--ink);
+      border-radius: 22px;
+      box-shadow: 8px 8px 0 var(--shadow);
+      transform: translateY(12px) scale(.97);
+    }
+    .info-overlay.open .info-sheet{ transform: translateY(0) scale(1); }
+
+    .series-sheet{
+      max-width: 520px;
+      max-height: 78vh;
+      border-bottom: 3px solid var(--ink);
+      border-radius: 22px;
+      box-shadow: 8px 8px 0 var(--shadow);
+      transform: translateY(12px) scale(.97);
+    }
+    .info-overlay.open .series-sheet{ transform: translateY(0) scale(1); }
+
+    .icon-btn{ width: 44px; height: 44px; font-size: 19px; }
+  }
+
+  @media (min-width: 1024px){
+    .wrap{ max-width: 1080px; padding-top: 36px; }
+
+    header{ margin-bottom: 40px; }
+
+    .panel{
+      max-width: 820px;
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 34px;
+    }
+
+    .queue-head{
+      max-width: 980px;
+      margin-left: auto;
+      margin-right: auto;
+      font-size: 17px;
+    }
+
+    .chapter-list{
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .chip-row:nth-child(3n+1){ transform: rotate(-0.3deg); }
+    .chip-row:nth-child(3n+2){ transform: rotate(0.25deg); }
+    .chip-row:nth-child(3n){ transform: rotate(-0.15deg); }
+
+    .empty-state{
+      grid-column: 1 / -1;
+      padding: 60px 20px;
+    }
+  }
+
+  @media (min-width: 1400px){
+    .wrap{ max-width: 1280px; }
+
+    .chapter-list{
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      max-width: 1200px;
+    }
+    .queue-head{ max-width: 1200px; }
+
+    h1{ text-shadow: 4px 4px 0 var(--title-shadow); }
+
+    .chip-row:nth-child(3n+1){ transform: rotate(-0.2deg); }
+    .chip-row:nth-child(3n+2){ transform: rotate(0.15deg); }
+    .chip-row:nth-child(3n){ transform: rotate(-0.1deg); }
+  }
+
+  @media (min-width: 900px) and (max-height: 700px){
+    .wrap{ padding-top: 16px; }
+    header{ margin-bottom: 20px; }
+    .panel{ padding: 18px 22px; margin-bottom: 22px; }
+  }
+
+  @media (max-width: 640px){
+    .input-row{ flex-direction: column; }
+    .btn-fetch,
+    .btn-reset{ width: 100%; min-height: 46px; }
+    .btn-fetch{ padding: 12px; }
+    .btn-reset{ padding: 10px; }
+    .chip-status{ display: none; }
+    .chip-row{ flex-wrap: wrap; }
+  }
+
+  /* Layar sangat sempit (≤380px): baris hasil pencarian dirampingkan
+     supaya cover + judul + tombol Pilih tetap muat sebaris. */
+  @media (max-width: 380px){
+    .search-item{ gap: 8px; padding: 8px 10px; }
+    .search-item img,
+    .search-item-noimg{ width: 40px; height: 54px; }
+    .search-item-title{ font-size: 13px; }
+    .btn-pick{ padding: 8px 10px; font-size: 12px; }
+    .tab-arrow{ width: 32px; height: 32px; }
+    #tab-current-name{ font-size: 14px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; animation-duration: .01s !important; }
+  }
+</style>
+</head>
+<body>
+<!-- Template referensi banner Baozimh (isi file JPEG). Dipakai engine
+     pemotong banner otomatis; disembunyikan dari tampilan. -->
+<img id="banner690" src="banners/banner_690.jpg" style="display:none" alt="" />
+<img id="banner800" src="banners/banner_800.jpg" style="display:none" alt="" />
+<img id="banner1280" src="banners/banner_1280.jpg" style="display:none" alt="" />
+<img id="banner2000" src="banners/banner_2000.jpg" style="display:none" alt="" />
+<div class="wrap">
+
+  <div class="topbar" id="topbar">
+    <button type="button" class="icon-btn" id="theme-toggle" aria-label="Ganti mode gelap/terang" title="Ganti tema" aria-pressed="false">🌙</button>
+    <button type="button" class="icon-btn" id="info-btn" aria-haspopup="dialog" aria-expanded="false" title="Situs yang didukung">!</button>
+  </div>
+
+  <header>
+    <h1>Trial Fetch</h1>
+  </header>
+
+  <nav class="tabbar" id="tabbar" aria-label="Navigasi fitur">
+    <button type="button" class="tab-arrow" id="tab-prev" aria-label="Tab sebelumnya">‹</button>
+    <div class="tab-current">
+      <span id="tab-current-name">Ambil</span>
+      <div class="tab-dots" id="tab-dots" role="tablist" aria-label="Pilih tab">
+        <button type="button" class="tab-dot active" data-tab="ambil" role="tab" aria-selected="true" aria-label="Ambil"></button>
+        <button type="button" class="tab-dot" data-tab="cari" role="tab" aria-selected="false" aria-label="Cari"></button>
+        <button type="button" class="tab-dot" data-tab="simpan" role="tab" aria-selected="false" aria-label="Tersimpan"></button>
+        <button type="button" class="tab-dot" data-tab="antrean" role="tab" aria-selected="false" aria-label="Antrean"></button>
+      </div>
+    </div>
+    <button type="button" class="tab-arrow" id="tab-next" aria-label="Tab berikutnya">›</button>
+  </nav>
+
+  <section class="tab-page active" id="page-ambil" role="tabpanel" aria-label="Ambil chapter">
+  <div class="panel">
+    <div class="panel-label-row">
+      <p class="panel-label">Link Chapter</p>
+    </div>
+    <div class="input-row">
+      <input id="url-input" type="text" placeholder="https://contoh.com/chapter/12" />
+      <button type="button" class="btn-fetch" id="fetch-btn">FETCH</button>
+      <button type="button" class="btn-reset" id="reset-btn" aria-label="Reset dan kosongkan antrean">RESET</button>
+    </div>
+    <label class="mini-toggle" title="Potong banner atas/bawah 200px otomatis (khusus sumber Baozimh, OpenCV, 100% lokal)">
+      <input type="checkbox" id="baozimh-crop-toggle" checked />
+      <span class="mini-toggle-box" aria-hidden="true"></span>
+      <span>Potong banner Baozimh otomatis <span class="mini-toggle-note" id="baozimh-crop-note"></span></span>
+    </label>
+  </div>
+  </section>
+
+  <section class="tab-page" id="page-cari" role="tabpanel" aria-label="Cari judul">
+  <div class="panel">
+    <div class="panel-label-row">
+      <p class="panel-label">Cari Judul</p>
+    </div>
+    <div class="input-row" style="margin-bottom:10px">
+      <input id="search-input" type="text" placeholder="cth: 八千里路雲和月" />
+      <button type="button" class="btn-fetch" id="search-btn">CARI</button>
+    </div>
+    <div class="search-sources" id="search-sources" role="group" aria-label="Sumber pencarian">
+      <button type="button" class="search-chip active" data-source="all">Semua</button>
+      <button type="button" class="search-chip" data-source="baozimh">Baozimh</button>
+      <button type="button" class="search-chip" data-source="wmanhua">Wmanhua</button>
+      <button type="button" class="search-chip" data-source="jjabtoon">Jjabtoon</button>
+      <button type="button" class="search-chip" data-source="koudaimh">Koudaimh</button>
+      <button type="button" class="search-chip" data-source="jjaptoon">Jjaptoon</button>
+      <button type="button" class="search-chip" data-source="goodtoon">GoodToon</button>
+    </div>
+    <div class="search-results" id="search-results" style="display:none"></div>
+  </div>
+  </section>
+
+  <section class="tab-page" id="page-simpan" role="tabpanel" aria-label="Series tersimpan">
+  <div class="queue-head" id="saved-head" style="display:none">
+    <span>Series Tersimpan</span>
+    <span class="queue-count" id="saved-count">0</span>
+  </div>
+
+  <div class="chapter-list" id="saved-list" style="margin-bottom:26px"></div>
+  <div class="tab-hint" id="saved-hint">Belum ada series tersimpan.<br>Buka sebuah series, lalu tekan 💾 Simpan series ini.</div>
+  </section>
+
+  <section class="tab-page" id="page-antrean" role="tabpanel" aria-label="Antrean chapter">
+  <div class="queue-head" id="queue-head" style="display:none">
+    <span>Antrean Chapter</span>
+    <span class="queue-count" id="queue-count">0</span>
+  </div>
+
+  <div class="chapter-list" id="chapter-list"></div>
+  <div class="tab-hint" id="queue-hint">Antrean masih kosong.<br>Tempel link chapter di tab Ambil, atau pilih dari tab Cari.</div>
+  </section>
+
+  <div class="info-overlay" id="info-overlay">
+    <div class="info-sheet" role="dialog" aria-modal="true" aria-label="Situs yang didukung">
+      <div class="info-sheet-title">Situs yang didukung</div>
+      <p class="info-sheet-desc">Saat ini Trial Fetch bisa mengambil chapter dari sumber berikut:</p>
+      <div class="site-chips">
+        <span class="site-chip">Baozimh</span>
+        <span class="site-chip">Jjaptoon</span>
+        <span class="site-chip">Jjabtoon</span>
+        <span class="site-chip">Manwa</span>
+        <span class="site-chip">Wmanhua</span>
+        <span class="site-chip">Koudaimh</span>
+        <span class="site-chip">GoodToon</span>
+      </div>
+      <button type="button" class="btn-close" id="info-close">Tutup</button>
+    </div>
+  </div>
+
+  <div class="info-overlay" id="series-overlay">
+    <div class="series-sheet" role="dialog" aria-modal="true" aria-label="Pilih chapter">
+      <div class="series-sheet-title" id="series-title">Memuat daftar chapter...</div>
+      <p class="series-sheet-count" id="series-count"></p>
+
+      <div class="series-range-row" id="series-range-row" style="display:none">
+        <span class="series-range-label">Dari</span>
+        <input type="number" id="series-range-from" min="1" placeholder="1" inputmode="numeric">
+        <span class="series-range-label">sampai</span>
+        <input type="number" id="series-range-to" min="1" placeholder="10" inputmode="numeric">
+        <button type="button" class="btn-range-apply" id="series-range-apply">Terapkan</button>
+      </div>
+
+      <div class="series-bulk-row" id="series-bulk-row" style="display:none">
+        <button type="button" class="btn-bulk" id="series-select-all">Pilih Semua</button>
+        <button type="button" class="btn-bulk" id="series-select-none">Kosongkan</button>
+      </div>
+
+      <button type="button" class="btn-save-series" id="series-save" style="display:none">💾 Simpan series ini</button>
+
+      <div class="series-chapter-list" id="series-chapter-list" role="group" aria-label="Daftar chapter yang bisa dipilih">
+        <div class="series-loading">Mengambil daftar chapter...</div>
+      </div>
+
+      <div class="series-sheet-footer">
+        <button type="button" class="btn-close" id="series-close">Batal</button>
+        <button type="button" class="btn-series-confirm" id="series-confirm" disabled>Tambahkan (0)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <footer>Mochizhouuu © 2026</footer>
+
+  <script>
+    const PROXY_URL = 'https://tencomic-proxy.saputroagusdwi0.workers.dev/';
+
+    // Domain default untuk sumber yang nomor domainnya suka berganti.
+    // URL lengkap tempelan user SELALU dipakai apa adanya (tidak perlu update
+    // saat domain pindah); konstanta ini cuma dipakai kalau user menempel ID
+    // angka polos. Kalau domain pindah lagi, cukup update 2 baris ini.
+    const DEFAULT_JJAPTOON_ORIGIN = 'https://www.jjaptoon008.com';
+    const DEFAULT_JJABTOON_ORIGIN = 'https://jjabtoon001.com';
+
+    let queueGeneration = 0;
+
+    // Antrean global untuk fetch METADATA chapter (bukan download gambar).
+    // Tanpa ini, memilih ratusan chapter sekaligus dari modal series akan
+    // memicu ratusan fetchChapter() bersamaan — ratusan request paralel,
+    // ratusan chip+thumbnail dirender sekaligus, RAM naik drastis, dan
+    // Worker bisa kena rate limit. Dibatasi supaya cuma sejumlah kecil
+    // chapter yang benar-benar fetch metadata di waktu bersamaan; sisanya
+    // menunggu giliran, tapi tetap tampil sebagai chip "menunggu" dari awal
+    // supaya user tahu semua permintaannya diterima.
+    const METADATA_CONCURRENCY = 3;
+    let metadataQueue = [];
+    let metadataActive = 0;
+
+    function runMetadataQueue() {
+      while (metadataActive < METADATA_CONCURRENCY && metadataQueue.length > 0) {
+        const task = metadataQueue.shift();
+        metadataActive++;
+        task().finally(() => {
+          metadataActive--;
+          runMetadataQueue();
+        });
+      }
+    }
+
+    // Semaphore global untuk DOWNLOAD GAMBAR, dibagi oleh semua chapter yang
+    // sedang di-download bersamaan (bukan per-chapter). Tanpa ini, tiap
+    // downloadChapter() punya CONCURRENCY sendiri (misal 5) — kalau user
+    // tekan tombol Unduh di 10 chip sekaligus, itu jadi ~50 request gambar
+    // paralel ke proxy. Dengan semaphore global, total slot aktif di
+    // seluruh chapter tetap dibatasi angka yang sama.
+    // Diturunkan dari 5 ke 3: CDN bertanda tangan seperti shimolife.com
+    // (dipakai Koudaimh) cenderung menolak sebagian request kalau terlalu
+    // banyak koneksi paralel datang sekaligus dalam waktu singkat (chapter
+    // dengan 200+ gambar jadi rawan bolong). Semaphore ini global untuk
+    // semua sumber, bukan cuma Koudaimh, tapi retry otomatis yang sudah ada
+    // menutupi perlambatan ini untuk platform lain yang memang lebih toleran
+    // terhadap concurrency tinggi.
+    const DOWNLOAD_CONCURRENCY = 3;
+    let activeDownloadSlots = 0;
+    const downloadWaiters = [];
+
+    function acquireDownloadSlot() {
+      if (activeDownloadSlots < DOWNLOAD_CONCURRENCY) {
+        activeDownloadSlots++;
+        return Promise.resolve();
+      }
+      return new Promise((resolve) => downloadWaiters.push(resolve));
+    }
+
+    function releaseDownloadSlot() {
+      const next = downloadWaiters.shift();
+      if (next) {
+        next(); // slot langsung diteruskan ke penunggu berikutnya, activeDownloadSlots tidak berubah
+      } else {
+        activeDownloadSlots--;
+      }
+    }
+
+    // Dipakai di semua titik yang men-trigger fetch chapter (input manual
+    // maupun pilih banyak chapter dari modal series), menggantikan
+    // pemanggilan fetchChapter() langsung.
+    function enqueueFetchChapter(inputUrl) {
+      const myGeneration = queueGeneration;
+      metadataQueue.push(() => {
+        // Antrean lama (dari sebelum RESET) tidak perlu dieksekusi sama
+        // sekali — bukan cuma dihentikan di tengah jalan.
+        if (myGeneration !== queueGeneration) return Promise.resolve();
+        return fetchChapter(inputUrl);
+      });
+      runMetadataQueue();
+    }
+
+    const themeToggle = document.getElementById('theme-toggle');
+    const infoBtn = document.getElementById('info-btn');
+    const infoOverlay = document.getElementById('info-overlay');
+    const infoClose = document.getElementById('info-close');
+    const fetchBtn = document.getElementById('fetch-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const urlInput = document.getElementById('url-input');
+    const chapterList = document.getElementById('chapter-list');
+    const queueHead = document.getElementById('queue-head');
+    const queueCount = document.getElementById('queue-count');
+    const toastContainer = document.getElementById('toast-container');
+    const topbar = document.getElementById('topbar');
+
+    // ============================================================
+    // TEMA GELAP / TERANG
+    // ============================================================
+
+    function applyTheme(theme){
+      const validTheme = theme === 'dark' ? 'dark' : 'light';
+      const isDark = validTheme === 'dark';
+
+      document.documentElement.dataset.theme = validTheme;
+      themeToggle.textContent = isDark ? '☀️' : '🌙';
+      themeToggle.setAttribute('aria-label', isDark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap');
+      themeToggle.setAttribute('title', isDark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap');
+      themeToggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+
+      try { localStorage.setItem('tf-theme', validTheme); } catch(e){}
+    }
+
+    applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+
+    themeToggle.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      showToast('info', next === 'dark' ? 'Mode gelap aktif 🌙' : 'Mode terang aktif ☀️', 2200);
+    });
+
+    // Toggle pemotong banner Baozimh — tersimpan lokal, default aktif.
+    const baozimhCropToggle = document.getElementById('baozimh-crop-toggle');
+    const baozimhCropNote = document.getElementById('baozimh-crop-note');
+    try {
+      const savedCrop = localStorage.getItem('tf-baozimh-crop');
+      if (savedCrop === '0' || savedCrop === '1') baozimhCropToggle.checked = savedCrop === '1';
+    } catch(e) {}
+    if (baozimhCropNote) baozimhCropNote.textContent = '(OpenCV, lokal)';
+    baozimhCropToggle.addEventListener('change', () => {
+      try { localStorage.setItem('tf-baozimh-crop', baozimhCropToggle.checked ? '1' : '0'); } catch(e) {}
+      showToast('info', baozimhCropToggle.checked ? 'Potong banner Baozimh: aktif ✂️' : 'Potong banner Baozimh: nonaktif — halaman disimpan utuh.', 2200);
+    });
+
+    if (window.matchMedia) {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+      systemTheme.addEventListener('change', (event) => {
+        try {
+          const savedTheme = localStorage.getItem('tf-theme');
+          if (savedTheme === 'dark' || savedTheme === 'light') return;
+        } catch(e) {}
+        applyTheme(event.matches ? 'dark' : 'light');
+      });
+    }
+
+    // ============================================================
+    // SCROLL-AWARE TOPBAR (perbaikan bug dot di desktop)
+    // ------------------------------------------------------------
+    // Saat halaman di atas (scrollY kecil), topbar transparan supaya
+    // pola dot di body tetap terlihat jelas di sekitar tombol toggle.
+    // Setelah pengguna menggulir, topbar dapat latar semi-transparan
+    // (--bg-translucent) supaya kartu chapter yang lewat di belakang
+    // tidak menabrak tombol. Tidak pakai backdrop-filter blur karena
+    // blur-lah yang membuat dot terlihat kabur/hilang.
+    // ============================================================
+    const SCROLL_THRESHOLD = 8;
+    let ticking = false;
+
+    function updateTopbarScrolled(){
+      const scrolled = window.scrollY > SCROLL_THRESHOLD;
+      topbar.classList.toggle('scrolled', scrolled);
+      ticking = false;
+    }
+
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        window.requestAnimationFrame(updateTopbarScrolled);
+        ticking = true;
+      }
+    }, { passive: true });
+
+    // Inisialisasi state awal
+    updateTopbarScrolled();
+
+    // ============================================================
+    // TOAST NOTIFICATION
+    // ============================================================
+
+    const TOAST_ICONS = { success: '✓', error: '✕', info: 'i', warning: '!' };
+
+    function showToast(type, message, duration = 4000){
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `
+        <span class="toast-icon">${TOAST_ICONS[type] || 'i'}</span>
+        <span class="toast-msg"></span>
+        <button type="button" class="toast-close" aria-label="Tutup notifikasi">✕</button>
+        <span class="toast-bar" style="animation-duration:${duration}ms"></span>
+      `;
+      toast.querySelector('.toast-msg').textContent = message;
+      toastContainer.appendChild(toast);
+
+      const dismiss = () => {
+        toast.classList.add('leaving');
+        setTimeout(() => toast.remove(), 260);
+      };
+
+      const timer = setTimeout(dismiss, duration);
+      toast.querySelector('.toast-close').addEventListener('click', () => {
+        clearTimeout(timer);
+        dismiss();
+      });
+
+      while (toastContainer.children.length > 4) {
+        toastContainer.firstChild.remove();
+      }
+    }
+
+    // ============================================================
+    // INFO MODAL
+    // ============================================================
+
+    function openInfo(){
+      infoOverlay.classList.add('open');
+      infoBtn.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+      infoClose.focus();
+    }
+    function closeInfo(){
+      infoOverlay.classList.remove('open');
+      infoBtn.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+      infoBtn.focus();
+    }
+
+    infoBtn.addEventListener('click', openInfo);
+    infoClose.addEventListener('click', closeInfo);
+    infoOverlay.addEventListener('click', (e) => {
+      if (e.target === infoOverlay) closeInfo();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (!infoOverlay.classList.contains('open')) return;
+      if (e.key === 'Escape') { closeInfo(); return; }
+      if (e.key === 'Tab') { e.preventDefault(); infoClose.focus(); }
+    });
+
+    // ============================================================
+    // SERIES CHAPTER PICKER
+    // ============================================================
+
+    const seriesOverlay = document.getElementById('series-overlay');
+    const seriesTitle = document.getElementById('series-title');
+    const seriesCount = document.getElementById('series-count');
+    const seriesRangeRow = document.getElementById('series-range-row');
+    const seriesRangeFrom = document.getElementById('series-range-from');
+    const seriesRangeTo = document.getElementById('series-range-to');
+    const seriesRangeApply = document.getElementById('series-range-apply');
+    const seriesBulkRow = document.getElementById('series-bulk-row');
+    const seriesSelectAll = document.getElementById('series-select-all');
+    const seriesSelectNone = document.getElementById('series-select-none');
+    const seriesChapterList = document.getElementById('series-chapter-list');
+    const seriesClose = document.getElementById('series-close');
+    const seriesConfirm = document.getElementById('series-confirm');
+    const seriesSave = document.getElementById('series-save');
+
+    // Chapter yang sedang ditampilkan di modal saat ini, dan generasi
+    // pemuatannya sendiri — supaya kalau modal ditutup/dibuka lagi cepat
+    // (misal user salah paste series lain), render lama tidak nyasar ke
+    // modal yang sudah berganti target series.
+    let seriesChapters = [];
+    let seriesLoadGeneration = 0;
+    // Meta series yang terakhir berhasil dimuat (untuk tombol 💾 Simpan) —
+    // diisi di fetchSeries(), dikosongkan tiap pemuatan baru/ditutup.
+    let lastSeriesMeta = null;
+    // Cover titipan dari hasil pencarian: fetchSeries() tidak menerima cover
+    // (respons series tiap sumber tidak konsisten), jadi cover hasil search
+    // yang diklik dititipkan lewat variabel ini lalu digabung ke
+    // lastSeriesMeta sekali pakai.
+    let pendingSeriesCover = '';
+
+    function openSeries(){
+      seriesOverlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      // Fokus dipindah ke dalam modal begitu terbuka (standar aksesibilitas
+      // dialog) — tanpa ini, fokus keyboard tetap di tombol FETCH di
+      // belakang overlay, seolah modal tidak benar-benar "aktif" untuk
+      // pengguna keyboard/screen reader.
+      seriesClose.focus();
+    }
+    function closeSeries(){
+      // Menaikkan generasi supaya fetchSeries() yang masih berjalan (kalau
+      // modal ditutup sebelum request selesai) berhenti mengubah isi modal
+      // atau memunculkan toast setelah modal sudah tidak terlihat.
+      seriesLoadGeneration++;
+      seriesOverlay.classList.remove('open');
+      document.body.style.overflow = '';
+      fetchBtn.focus();
+    }
+
+    seriesClose.addEventListener('click', closeSeries);
+    seriesOverlay.addEventListener('click', (e) => {
+      if (e.target === seriesOverlay) closeSeries();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (!seriesOverlay.classList.contains('open')) return;
+      if (e.key === 'Escape') { closeSeries(); return; }
+      if (e.key !== 'Tab') return;
+
+      // Tab-trap sebelumnya cuma mengizinkan berpindah di antara 7 kontrol
+      // tetap (rentang, pilih semua, dst), padahal modal ini isinya bisa
+      // ratusan checkbox chapter — akibatnya checkbox itu sama sekali tidak
+      // bisa dicapai lewat keyboard walau checkbox native browser harusnya
+      // otomatis masuk urutan Tab. Diganti supaya query SEMUA elemen yang
+      // bisa difokus di dalam modal (termasuk checkbox), bukan daftar
+      // hardcode — fokus tetap dikunci di dalam batas modal (tidak bocor
+      // ke elemen di belakangnya), tapi seluruh isi modal jadi bisa
+      // dijangkau (lihat bug #10).
+      const focusableSelector = 'button, input, [tabindex]:not([tabindex="-1"])';
+      const focusables = Array.from(seriesOverlay.querySelectorAll(focusableSelector))
+        .filter(el => !el.disabled && el.offsetParent !== null);
+      if (focusables.length === 0) return;
+
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+      // Selain di ujung awal/akhir, Tab dibiarkan berjalan natural (tidak
+      // di-preventDefault) supaya urutan fokus normal DOM tetap berlaku,
+      // termasuk untuk checkbox chapter.
+    });
+
+    function updateSeriesConfirmLabel(){
+      const checked = seriesChapterList.querySelectorAll('input[type="checkbox"]:checked').length;
+      seriesConfirm.textContent = `Tambahkan (${checked})`;
+      seriesConfirm.disabled = checked === 0;
+    }
+
+    function renderSeriesChapters(comicId, chapters){
+      seriesChapters = chapters;
+      seriesCount.textContent = `${chapters.length} chapter ditemukan`;
+      seriesRangeRow.style.display = chapters.length > 0 ? 'flex' : 'none';
+      seriesBulkRow.style.display = chapters.length > 0 ? 'flex' : 'none';
+      seriesRangeFrom.value = '';
+      seriesRangeTo.value = '';
+
+      if (chapters.length === 0) {
+        seriesChapterList.innerHTML = '<div class="series-loading">Tidak ada chapter ditemukan.</div>';
+        updateSeriesConfirmLabel();
+        return;
+      }
+
+      // Chapter dari worker sudah terurut terbaru -> terlama; dipertahankan
+      // apa adanya sesuai kesepakatan (bukan diurut ulang di sini).
+      const frag = document.createDocumentFragment();
+      chapters.forEach((ch, idx) => {
+        const item = document.createElement('label');
+        item.className = 'series-chapter-item';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.dataset.idx = String(idx);
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'series-chapter-item-title';
+        titleSpan.textContent = ch.chapter_title || `Chapter ${ch.chapter_id}`;
+
+        item.appendChild(checkbox);
+        item.appendChild(titleSpan);
+        frag.appendChild(item);
+      });
+
+      seriesChapterList.innerHTML = '';
+      seriesChapterList.appendChild(frag);
+      updateSeriesConfirmLabel();
+    }
+
+    seriesChapterList.addEventListener('change', (e) => {
+      if (e.target.matches('input[type="checkbox"]')) updateSeriesConfirmLabel();
+    });
+
+    seriesSelectAll.addEventListener('click', () => {
+      seriesChapterList.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+      updateSeriesConfirmLabel();
+    });
+    seriesSelectNone.addEventListener('click', () => {
+      seriesChapterList.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+      updateSeriesConfirmLabel();
+    });
+
+    // Sebagian chapter menulis nomornya pakai angka Han/Kanji (misal
+    // "第七十九话" = chapter 79), bukan digit Arab — ini nyata terjadi di
+    // data wmanhua (chapter 79 di antara 78 dan 80). Kalau tidak ditangani,
+    // fitur rentang bisa melewatkan chapter itu meski nomornya masuk
+    // rentang yang diminta. Mendukung 0-999 (satuan, puluhan, ratusan),
+    // cukup untuk jumlah chapter komik pada umumnya.
+    function chineseNumToInt(str) {
+      const digits = { '零':0,'一':1,'二':2,'两':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9 };
+      const units = { '十':10, '百':100 };
+      if (!str) return null;
+      if (str.length === 1 && str in digits) return digits[str];
+
+      let section = 0;
+      let lastDigit = null;
+      for (const ch of str) {
+        if (ch in digits) {
+          lastDigit = digits[ch];
+        } else if (ch in units) {
+          const multiplier = lastDigit === null ? 1 : lastDigit;
+          section += multiplier * units[ch];
+          lastDigit = null;
+        } else {
+          return null; // karakter tidak dikenal, bukan pola angka Han murni
+        }
+      }
+      if (lastDigit !== null) section += lastDigit;
+      return section;
+    }
+
+    // "Dari X sampai Y" mengacu ke NOMOR CHAPTER yang tertulis di judul
+    // (misal "第111话" -> 111), bukan posisi urutan di list. Coba digit Arab
+    // dulu (paling umum), baru fallback ke angka Han/Kanji kalau tidak ada.
+    function extractChapterNumber(title){
+      const t = title || '';
+      const arabicMatch = t.match(/(\d+)/);
+      if (arabicMatch) return parseInt(arabicMatch[1], 10);
+
+      const hanMatch = t.match(/第([零一二两三四五六七八九十百]+)[话話]/);
+      if (hanMatch) return chineseNumToInt(hanMatch[1]);
+
+      return null;
+    }
+
+    seriesRangeApply.addEventListener('click', () => {
+      const from = parseInt(seriesRangeFrom.value, 10);
+      const to = parseInt(seriesRangeTo.value, 10);
+      if (!Number.isFinite(from) || !Number.isFinite(to)) {
+        showToast('warning', 'Isi rentang chapter dari dan sampai dulu ya.', 3000);
+        return;
+      }
+      const lo = Math.min(from, to);
+      const hi = Math.max(from, to);
+
+      let matched = 0;
+      seriesChapterList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        const idx = parseInt(cb.dataset.idx, 10);
+        const chapterNum = extractChapterNumber(seriesChapters[idx] && seriesChapters[idx].chapter_title);
+        if (chapterNum !== null && chapterNum >= lo && chapterNum <= hi) {
+          cb.checked = true;
+          matched++;
+        }
+      });
+      updateSeriesConfirmLabel();
+
+      if (matched === 0) {
+        showToast('warning', `Tidak ada chapter dengan nomor ${lo}-${hi} yang cocok.`, 3000);
+      } else {
+        showToast('info', `${matched} chapter dalam rentang ${lo}-${hi} dicentang.`, 2500);
+      }
+    });
+
+    seriesConfirm.addEventListener('click', () => {
+      const checkedIdx = Array.from(seriesChapterList.querySelectorAll('input[type="checkbox"]:checked'))
+        .map(cb => parseInt(cb.dataset.idx, 10));
+
+      if (checkedIdx.length === 0) return;
+
+      const selected = checkedIdx.map(idx => seriesChapters[idx]).filter(Boolean);
+      closeSeries();
+      showToast('info', `Menambahkan ${selected.length} chapter ke antrean...`, 2500);
+      // Langsung pindahkan user ke tab Antrean supaya hasilnya terlihat —
+      // tanpa ini user tetap di tab sebelumnya dan mengira tidak terjadi apa-apa.
+      switchTab('antrean');
+
+      // Tiap chapter terpilih dimasukkan ke antrean metadata global (bukan
+      // langsung fetchChapter()) — kalau user pilih ratusan chapter
+      // sekaligus, request metadata tetap dibatasi jalan beberapa saja
+      // secara bersamaan (lihat METADATA_CONCURRENCY), sisanya menunggu
+      // giliran secara otomatis.
+      selected.forEach(ch => { enqueueFetchChapter(ch.url); });
+    });
+
+    async function fetchSeries(source, comicId, seriesUrl){
+      const myGeneration = ++seriesLoadGeneration;
+
+      openSeries();
+      seriesTitle.textContent = 'Memuat daftar chapter...';
+      seriesCount.textContent = '';
+      seriesRangeRow.style.display = 'none';
+      seriesBulkRow.style.display = 'none';
+      seriesChapterList.innerHTML = '<div class="series-loading">Mengambil daftar chapter...</div>';
+      seriesConfirm.disabled = true;
+      seriesConfirm.textContent = 'Tambahkan (0)';
+      seriesSave.style.display = 'none';
+      lastSeriesMeta = null;
+
+      try {
+        const res = await fetch(buildProxyUrl(seriesUrl), { cache: 'no-store' });
+
+        const contentType = res.headers.get('content-type') || '';
+        let data;
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          throw new Error(text || `HTTP ${res.status}`);
+        }
+
+        if (!res.ok || data.error) {
+          const extra = data.detail ? ` (${data.detail})` : '';
+          throw new Error((data.error || `HTTP ${res.status}`) + extra);
+        }
+
+        if (myGeneration !== seriesLoadGeneration) return;
+
+        const chapters = Array.isArray(data.chapters) ? data.chapters : [];
+        seriesTitle.textContent = `Pilih Chapter — ${data.source || source}`;
+        renderSeriesChapters(comicId, chapters);
+
+        // Simpan meta untuk tombol 💾 — judul diambil dari respons series
+        // (komik yang responsnya tanpa judul, mis. baozimh/wmanhua, fallback
+        // ke slug/id supaya tetap bisa dikenali di daftar simpanan).
+        lastSeriesMeta = {
+          source: data.source || source,
+          url: seriesUrl,
+          title: data.comic_title || ('Series ' + (data.comic_slug || data.comic_id || data.book_id || data.webtoon_id || comicId || '')) || seriesUrl,
+          cover: data.cover || pendingSeriesCover || ''
+        };
+        pendingSeriesCover = '';
+        seriesSave.style.display = chapters.length > 0 ? '' : 'none';
+      } catch (err) {
+        if (myGeneration !== seriesLoadGeneration) return;
+        seriesTitle.textContent = 'Gagal memuat series';
+
+        // err.message bisa berasal dari body mentah worker/upstream (lihat
+        // fetchSeries di atas: throw new Error(text || ...) waktu respons
+        // bukan JSON) — kalau mengandung markup HTML dan dimasukkan lewat
+        // innerHTML, itu akan dieksekusi sebagai DOM, bukan ditampilkan
+        // sebagai teks. Dibuat lewat textContent supaya selalu aman.
+        seriesChapterList.innerHTML = '';
+        const errDiv = document.createElement('div');
+        errDiv.className = 'series-loading';
+        errDiv.textContent = 'Gagal mengambil daftar chapter: ' + err.message;
+        seriesChapterList.appendChild(errDiv);
+
+        showToast('error', 'Gagal mengambil daftar chapter: ' + err.message);
+      }
+    }
+
+    // ============================================================
+    // CARI JUDUL + SERIES TERSIMPAN (fitur baru)
+    // ------------------------------------------------------------
+    // Cari Judul memakai endpoint ?action=search di worker (sumber yang
+    // sudah terverifikasi: baozimh, wmanhua, jjabtoon). Hasilnya berupa
+    // series, jadi tombol "Pilih" tinggal meneruskannya ke fetchSeries()
+    // yang sudah ada — tidak ada alur baru.
+    // Series Tersimpan memakai localStorage (kunci di bawah), jadi daftar
+    // tetap ada walau halaman dimuat ulang. Tombol 💾 ada di modal series.
+    // ============================================================
+
+    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'jjabtoon', 'koudaimh', 'jjaptoon', 'goodtoon'];
+    const SEARCH_SOURCE_NAMES = { baozimh: 'Baozimh', wmanhua: 'Wmanhua', jjabtoon: 'Jjabtoon', koudaimh: 'Koudaimh', jjaptoon: 'Jjaptoon', goodtoon: 'GoodToon' };
+    // State tab ditaruh di sini (awal, sebelum renderSavedSeries() dipanggil
+    // saat muat) — bukan di section tab di bawah — supaya tidak kena
+    // temporal-dead-zone saat updateTabBadges() berjalan saat startup.
+    const TAB_ORDER = ['ambil', 'cari', 'simpan', 'antrean'];
+    const TAB_NAMES = { ambil: 'Ambil', cari: 'Cari', simpan: 'Tersimpan', antrean: 'Antrean' };
+    let activeTabName = 'ambil';
+    // Peta class badge lokal (bukan SOURCE_BADGE_CLASS global di bawah —
+    // section ini dieksekusi lebih dulu saat halaman dimuat, termasuk
+    // renderSavedSeries(), jadi tidak boleh menyentuh const yang
+    // dideklarasikan belakangan).
+    const SEARCH_BADGE_CLASS = { jjaptoon: 'jjaptoon', jjabtoon: 'jjabtoon', goodtoon: 'goodtoon', baozimh: 'baozimh', manwa: 'manwa', wmanhua: 'wmanhua', koudaimh: 'koudaimh' };
+    const SAVED_KEY = 'tf-saved-series';
+    const MAX_SEARCH_PER_SOURCE = 10;
+
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+    const searchSources = document.getElementById('search-sources');
+    const searchResults = document.getElementById('search-results');
+    const savedHead = document.getElementById('saved-head');
+    const savedCount = document.getElementById('saved-count');
+    const savedList = document.getElementById('saved-list');
+
+    let activeSearchSource = 'all';
+    let searchGeneration = 0;
+
+    searchSources.addEventListener('click', (e) => {
+      const btn = e.target.closest('.search-chip');
+      if (!btn) return;
+      activeSearchSource = btn.dataset.source;
+      searchSources.querySelectorAll('.search-chip').forEach(el => {
+        el.classList.toggle('active', el === btn);
+      });
+    });
+
+    function buildSearchUrl(source, query) {
+      const u = new URL(PROXY_URL);
+      u.searchParams.set('action', 'search');
+      u.searchParams.set('source', source);
+      u.searchParams.set('q', query);
+      return u.toString();
+    }
+
+    function renderSearchLoading() {
+      searchResults.style.display = 'flex';
+      searchResults.innerHTML = '<div class="search-hint">Mencari...</div>';
+    }
+
+    function renderSearchResults(items, query) {
+      searchResults.style.display = 'flex';
+      if (items.length === 0) {
+        searchResults.innerHTML = '';
+        const hint = document.createElement('div');
+        hint.className = 'search-hint';
+        hint.textContent = `Tidak ada hasil untuk "${query}". Coba kata kunci lain atau sumber berbeda.`;
+        searchResults.appendChild(hint);
+        return;
+      }
+
+      searchResults.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      items.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'search-item';
+
+        if (item.cover) {
+          const img = document.createElement('img');
+          img.src = buildProxyUrl(item.cover);
+          img.loading = 'lazy';
+          img.alt = '';
+          img.addEventListener('error', () => {
+            const ph = document.createElement('div');
+            ph.className = 'search-item-noimg';
+            ph.textContent = '📖';
+            row.replaceChild(ph, img);
+          });
+          row.appendChild(img);
+        } else {
+          const ph = document.createElement('div');
+          ph.className = 'search-item-noimg';
+          ph.textContent = '📖';
+          row.appendChild(ph);
+        }
+
+        const body = document.createElement('div');
+        body.className = 'search-item-body';
+        const title = document.createElement('p');
+        title.className = 'search-item-title';
+        title.textContent = item.title;
+        body.appendChild(title);
+        const sub = document.createElement('div');
+        sub.className = 'search-item-sub';
+        const badge = document.createElement('span');
+        badge.className = 'chip-badge ' + (SEARCH_BADGE_CLASS[item.source] || '');
+        badge.textContent = SEARCH_SOURCE_NAMES[item.source] || item.source;
+        sub.appendChild(badge);
+        if (item.author) {
+          const author = document.createElement('span');
+          author.textContent = item.author;
+          author.style.overflow = 'hidden';
+          author.style.textOverflow = 'ellipsis';
+          author.style.whiteSpace = 'nowrap';
+          author.style.minWidth = '0';
+          author.style.flex = '1';
+          sub.appendChild(author);
+        }
+        body.appendChild(sub);
+        row.appendChild(body);
+
+        const pick = document.createElement('button');
+        pick.type = 'button';
+        pick.className = 'btn-pick';
+        pick.textContent = 'Pilih';
+        pick.addEventListener('click', () => {
+          pendingSeriesCover = item.cover || '';
+          fetchSeries(item.source, '', item.url);
+        });
+        row.appendChild(pick);
+
+        frag.appendChild(row);
+      });
+      searchResults.appendChild(frag);
+    }
+
+    async function handleSearch() {
+      const query = searchInput.value.trim();
+      if (!query) {
+        searchInput.classList.remove('shake');
+        void searchInput.offsetWidth;
+        searchInput.classList.add('shake');
+        searchInput.focus();
+        showToast('warning', 'Isi kata kunci pencarian dulu ya.', 3000);
+        return;
+      }
+
+      const myGeneration = ++searchGeneration;
+      const sources = activeSearchSource === 'all' ? SEARCH_SOURCES : [activeSearchSource];
+      renderSearchLoading();
+
+      const settled = await Promise.allSettled(sources.map(async (source) => {
+        const res = await fetch(buildSearchUrl(source, query), { cache: 'no-store' });
+        const contentType = res.headers.get('content-type') || '';
+        let data;
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          throw new Error(text.slice(0, 120) || `HTTP ${res.status}`);
+        }
+        if (!res.ok || data.error) {
+          const extra = data.detail ? ` (${data.detail})` : '';
+          throw new Error((data.error || `HTTP ${res.status}`) + extra);
+        }
+        const results = Array.isArray(data.results) ? data.results : [];
+        // Mode "Semua": batasi per sumber supaya satu sumber yang
+        // hasilnya banyak tidak menenggelamkan sumber lain.
+        return results.slice(0, activeSearchSource === 'all' ? MAX_SEARCH_PER_SOURCE : 30)
+          .map(r => ({ ...r, source: data.source || source }));
+      }));
+
+      if (myGeneration !== searchGeneration) return;
+
+      const merged = [];
+      const failedSources = [];
+      settled.forEach((result, idx) => {
+        if (result.status === 'fulfilled') {
+          merged.push(...result.value);
+        } else {
+          failedSources.push(SEARCH_SOURCE_NAMES[sources[idx]] || sources[idx]);
+        }
+      });
+
+      renderSearchResults(merged, query);
+
+      if (failedSources.length > 0) {
+        showToast('warning', `Pencarian ${failedSources.join(', ')} gagal, menampilkan hasil yang berhasil.`, 4000);
+      } else if (merged.length > 0) {
+        showToast('success', `${merged.length} hasil ditemukan untuk "${query}".`, 2500);
+      }
+    }
+
+    searchBtn.addEventListener('click', handleSearch);
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSearch();
+    });
+
+    // ---- Series Tersimpan (localStorage, permanen antar sesi) ----
+
+    function loadSavedSeries() {
+      try {
+        const raw = localStorage.getItem(SAVED_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.filter(s => s && s.url) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function persistSavedSeries(list) {
+      try {
+        localStorage.setItem(SAVED_KEY, JSON.stringify(list));
+      } catch (e) {
+        showToast('error', 'Gagal menyimpan: penyimpanan browser penuh atau diblokir.');
+      }
+    }
+
+    function renderSavedSeries() {
+      const list = loadSavedSeries();
+      savedHead.style.display = list.length === 0 ? 'none' : 'flex';
+      savedCount.textContent = list.length;
+      savedList.innerHTML = '';
+
+      const frag = document.createDocumentFragment();
+      list.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'saved-row';
+
+        const body = document.createElement('div');
+        body.className = 'saved-row-body';
+        const title = document.createElement('p');
+        title.className = 'saved-row-title';
+        title.textContent = item.title || item.url;
+        body.appendChild(title);
+        const sub = document.createElement('div');
+        sub.className = 'saved-row-sub';
+        const badge = document.createElement('span');
+        badge.className = 'chip-badge ' + (SEARCH_BADGE_CLASS[(item.source || '').toLowerCase()] || '');
+        badge.textContent = SEARCH_SOURCE_NAMES[item.source] || item.source || '?';
+        sub.appendChild(badge);
+        // URL sengaja tidak ditampilkan (isinya tersimpan di data untuk
+        // tombol Buka) — baris URL teknis bikin kartu tinggi dan sesak di HP.
+        body.appendChild(sub);
+
+        const top = document.createElement('div');
+        top.className = 'saved-top';
+        if (item.cover) {
+          const coverImg = document.createElement('img');
+          coverImg.className = 'saved-cover';
+          coverImg.src = buildProxyUrl(item.cover);
+          coverImg.loading = 'lazy';
+          coverImg.alt = '';
+          coverImg.addEventListener('error', () => {
+            const ph = document.createElement('div');
+            ph.className = 'saved-cover-ph';
+            ph.textContent = '📖';
+            top.replaceChild(ph, coverImg);
+          });
+          top.appendChild(coverImg);
+        } else {
+          const ph = document.createElement('div');
+          ph.className = 'saved-cover-ph';
+          ph.textContent = '📖';
+          top.appendChild(ph);
+        }
+        top.appendChild(body);
+        row.appendChild(top);
+
+        const actions = document.createElement('div');
+        actions.className = 'saved-row-actions';
+
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'btn-open';
+        open.textContent = 'Buka';
+        open.addEventListener('click', () => {
+          fetchSeries(item.source, '', item.url);
+        });
+        actions.appendChild(open);
+
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn-del';
+        del.textContent = 'Hapus';
+        del.setAttribute('aria-label', `Hapus ${item.title || item.url} dari simpanan`);
+        del.addEventListener('click', () => {
+          persistSavedSeries(loadSavedSeries().filter(s => s.url !== item.url));
+          renderSavedSeries();
+          showToast('info', 'Series dihapus dari simpanan.', 2500);
+        });
+        actions.appendChild(del);
+        row.appendChild(actions);
+
+        frag.appendChild(row);
+      });
+      savedList.appendChild(frag);
+      updateTabBadges();
+    }
+
+    seriesSave.addEventListener('click', () => {
+      if (!lastSeriesMeta) return;
+      const list = loadSavedSeries();
+      if (list.some(s => s.url === lastSeriesMeta.url)) {
+        showToast('info', 'Series ini sudah ada di simpanan.', 2500);
+        return;
+      }
+      list.unshift({ ...lastSeriesMeta, savedAt: Date.now() });
+      persistSavedSeries(list);
+      renderSavedSeries();
+      showToast('success', 'Series tersimpan, bisa dibuka lagi kapan saja.', 2500);
+    });
+
+    renderSavedSeries();
+
+    // ============================================================
+    // TAB NAVIGASI (Ambil / Cari / Tersimpan / Antrean)
+    // ------------------------------------------------------------
+    // Function declaration sengaja dipakai supaya bisa dipanggil dari
+    // handler yang dideklarasikan lebih awal (mis. seriesConfirm pindah
+    // ke tab Antrean setelah menambah chapter).
+    // ============================================================
+
+    const TAB_PAGES = { ambil: 'page-ambil', cari: 'page-cari', simpan: 'page-simpan', antrean: 'page-antrean' };
+    // (TAB_ORDER, TAB_NAMES, activeTabName dideklarasikan di section Cari di
+    // atas supaya aman diakses saat startup.)
+
+    function switchTab(name, pushHash = true) {
+      if (!TAB_PAGES[name]) return;
+      activeTabName = name;
+      document.querySelectorAll('#tab-dots .tab-dot').forEach((dot) => {
+        const active = dot.dataset.tab === name;
+        dot.classList.toggle('active', active);
+        dot.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      Object.entries(TAB_PAGES).forEach(([key, id]) => {
+        document.getElementById(id).classList.toggle('active', key === name);
+      });
+      updateTabLabel();
+      if (pushHash) {
+        try { history.replaceState(null, '', '#' + name); } catch (e) {}
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateTabLabel() {
+      const label = document.getElementById('tab-current-name');
+      if (!label) return;
+      const counts = {
+        simpan: loadSavedSeries().length,
+        antrean: chapterList.querySelectorAll('.chip-row').length
+      };
+      const total = counts[activeTabName] || 0;
+      label.textContent = TAB_NAMES[activeTabName] + (total > 0 ? ` (${total})` : '');
+    }
+
+    function stepTab(direction) {
+      const idx = TAB_ORDER.indexOf(activeTabName);
+      const next = idx + direction;
+      if (next >= 0 && next < TAB_ORDER.length) switchTab(TAB_ORDER[next]);
+    }
+
+    function updateTabBadges() {
+      const queueTotal = chapterList.querySelectorAll('.chip-row').length;
+      const savedTotal = loadSavedSeries().length;
+      updateTabLabel();
+      const queueHint = document.getElementById('queue-hint');
+      if (queueHint) queueHint.style.display = queueTotal > 0 ? 'none' : '';
+      const savedHint = document.getElementById('saved-hint');
+      if (savedHint) savedHint.style.display = savedTotal > 0 ? 'none' : '';
+    }
+
+    document.getElementById('tab-prev').addEventListener('click', () => stepTab(-1));
+    document.getElementById('tab-next').addEventListener('click', () => stepTab(1));
+    document.getElementById('tab-dots').addEventListener('click', (e) => {
+      const dot = e.target.closest('.tab-dot');
+      if (dot) switchTab(dot.dataset.tab);
+    });
+
+    // Geser kiri/kanan untuk pindah tab (sentuh). Sengaja dipasang di tiap
+    // halaman tab — bukan di .wrap — supaya gestur di dalam modal, toast,
+    // atau input teks tidak ikut memicu pindah tab. Scroll vertikal dan
+    // seleksi teks tidak terganggu karena cuma gerakan dominan horizontal
+    // yang jauh yang diterima.
+    (function enableTabSwipe() {
+      const MIN_SWIPE_PX = 80;
+      let startX = 0;
+      let startY = 0;
+      let tracking = false;
+
+      Object.values(TAB_PAGES).forEach((pageId) => {
+        const page = document.getElementById(pageId);
+        if (!page) return;
+
+        page.addEventListener('touchstart', (e) => {
+          if (e.target.closest('input, textarea')) return;
+          const touch = e.changedTouches[0];
+          startX = touch.clientX;
+          startY = touch.clientY;
+          tracking = true;
+        }, { passive: true });
+
+        page.addEventListener('touchend', (e) => {
+          if (!tracking) return;
+          tracking = false;
+          const touch = e.changedTouches[0];
+          const dx = touch.clientX - startX;
+          const dy = touch.clientY - startY;
+          if (Math.abs(dx) < MIN_SWIPE_PX) return;
+          if (Math.abs(dx) < Math.abs(dy) * 1.5) return;
+          const idx = TAB_ORDER.indexOf(activeTabName);
+          const next = dx < 0 ? idx + 1 : idx - 1;
+          if (next >= 0 && next < TAB_ORDER.length) switchTab(TAB_ORDER[next]);
+        }, { passive: true });
+
+        page.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
+      });
+    })();
+
+    // Tab awal mengikuti hash URL (#cari, #simpan, #antrean) kalau ada —
+    // default-nya Ambil.
+    (function initTabFromHash() {
+      try {
+        const initial = (location.hash || '').replace('#', '');
+        if (TAB_PAGES[initial]) switchTab(initial, false);
+      } catch (e) { /* biarkan tab default Ambil */ }
+    })();
+
+    // HELPERS
+    // ============================================================
+
+    function sanitizeFilename(str) {
+      return (str || '').replace(/[^a-zA-Z0-9\u4e00-\u9fa5\uac00-\ud7af\-_]/g, '_').substring(0, 50);
+    }
+
+    function getExtensionFromUrl(url) {
+      const allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'];
+      try {
+        const pathname = new URL(url).pathname;
+        const ext = pathname.split('.').pop().toLowerCase();
+        return allowed.includes(ext) ? ext : 'jpg';
+      } catch (e) {}
+      return 'jpg';
+    }
+
+    // Hash SHA-256 (hex) dari file placeholder yang diketahui dikirim CDN
+    // Koudaimh (shimolife.com) untuk sebagian request yang "ditolak secara
+    // halus" — bukan lewat HTTP error (401/403/dst) yang mudah dideteksi,
+    // melainkan dibalas status 200 dengan gambar JPEG 1200x1 piksel putih
+    // polos, byte-identik di semua kejadian (diverifikasi manual: MD5 sama
+    // persis di 8 sampel berbeda dari chapter yang sama). Deteksi berbasis
+    // HASH KONTEN, bukan cuma ukuran/dimensi file, sengaja dipilih karena
+    // gambar strip pendek (lebar penuh, tinggi cuma beberapa piksel) adalah
+    // format yang SAH untuk sebagian chapter Koudaimh/Kuaikan asli — kalau
+    // deteksi cuma berdasar "tinggi 1px" atau "ukuran < N bytes", potongan
+    // gambar asli yang memang tipis akan salah ditolak sebagai placeholder.
+    const KNOWN_PLACEHOLDER_HASHES = new Set([
+      '4ea088b69b1c9e7d0e394e4278b922c0b0988e6a33c2cd796dd7d4c9a6860dfb'
+    ]);
+
+    async function sha256Hex(blob) {
+      const buffer = await blob.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Gambar dari s.baozicdn.com / s1.baozicdn.com (dan bzcdn.net) ADA
+    // watermark; static-tw.baozimh.com melayani versi TANPA watermark untuk
+    // path yang sama — jadi rewrite ini bukan soal domain lama vs baru,
+    // tapi pilihan sengaja demi hasil gambar bersih. JANGAN dimatikan tanpa
+    // alasan kuat.
+    function rewriteBzcdnUrl(url) {
+      const match = url.match(/^https?:\/\/[\w-]+\.(?:baozicdn\.com|bzcdn\.net)\/(.+)$/);
+      return match ? `https://static-tw.baozimh.com/${match[1]}` : url;
+    }
+
+    // URLSearchParams melakukan encoding tepat satu kali. Ini penting untuk
+    // signed URL Koudaimh/Shimolife yang memiliki query signature.
+    function buildProxyUrl(targetUrl, referer = '') {
+      const proxy = new URL(PROXY_URL);
+      proxy.searchParams.set('url', targetUrl);
+      if (referer) proxy.searchParams.set('referer', referer);
+      return proxy.toString();
+    }
+
+    async function fetchProxyJson(targetUrl, referer = '') {
+      const res = await fetch(buildProxyUrl(targetUrl, referer), { cache: 'no-store' });
+      const contentType = res.headers.get('content-type') || '';
+      let data;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      if (!res.ok || data.error) {
+        const extra = data.detail ? ` (${data.detail})` : '';
+        const error = new Error((data.error || `HTTP ${res.status}`) + extra);
+        error.status = res.status;
+        throw error;
+      }
+      return data;
+    }
+
+    function detectSource(input) {
+      const value = input.trim().toLowerCase();
+      if (/^\d{6,}$/.test(value)) return 'jjaptoon';
+      try {
+        const url = new URL(value);
+        const hostname = url.hostname.replace(/^www\./, '');
+        // KOREKSI 2 Sep 2026: sempat salah diasumsikan "jjaptoon berganti
+        // nama total jadi jjabtoon" — TERNYATA SALAH. Keduanya situs
+        // BERBEDA yang hidup berdampingan (jjaptoon sempat error/down
+        // sementara, bukan mati permanen; jjabtoon ditemukan terpisah saat
+        // user mencari alternatif). Dipisah jadi dua source string sendiri,
+        // user pilih sesuai URL yang dipaste — TIDAK digabung lagi lewat
+        // regex jja[pb]toon.
+        if (/^jjaptoon\d*\.(com|net|vip|xyz|top|me)$/.test(hostname)) return 'jjaptoon';
+        // jjabtoon: path chapter-nya /episodes/{id} (beda dari jjaptoon
+        // yang /chapters/{id}), ditangani di getSourceConfig().jjabtoon.extractId.
+        if (/^jjabtoon\d*\.(com|net|vip|xyz|top|me)$/.test(hostname)) return 'jjabtoon';
+        // GoodToon: tema Madara, path chapter /manga/{slug}/{nomor}/ atau
+        // /manga/{slug}/chapter-{nomor}/ — ditangani di
+        // getSourceConfig().goodtoon.extractId. Nomor domain bisa berubah
+        // (goodtoon002, 003, dst) seperti jjaptoon. Path DIVALIDASI di sini
+        // (harus ada nomor chapter di akhir), bukan cuma hostname — karena
+        // URL series (/manga/{slug}/ tanpa nomor) dan URL chapter cuma
+        // beda satu segmen path, jadi kalau detectSeriesSource() di
+        // pemanggil kelewatan match series-nya, deteksi di sini tetap
+        // menolak dengan benar alih-alih salah anggap chapter.
+        if (/^goodtoon\d*\.(com|net|top|xyz)$/.test(hostname) && /\/manga\/[^/]+\/(?:chapter-)?\d+\/?(?:[?#]|$)/.test(value)) return 'goodtoon';
+        if (hostname === 'twmanga.com' || hostname.endsWith('.twmanga.com') ||
+            hostname === 'baozimh.com' || hostname.endsWith('.baozimh.com')) return 'baozimh';
+        if (hostname === 'manwa.me') return 'manwa';
+        if (hostname === 'wmanhua.com') return 'wmanhua';
+        // koudaimh dipakai lewat subdomain m. (bukan www.), jadi strip
+        // keduanya di sini saja — platform lain tidak pakai subdomain m.
+        // jadi baris strip global di atas sengaja tidak diubah.
+        if (hostname.replace(/^m\./, '') === 'koudaimh.com') return 'koudaimh';
+      } catch(e) { return null; }
+      return null;
+    }
+
+    // Deteksi URL SERIES (bukan chapter) — sengaja dipisah dari detectSource
+    // supaya alur chapter yang sudah stabil tidak perlu disentuh. Cek ini
+    // dipanggil duluan di handleFetch() sebelum fallback ke alur chapter biasa.
+    function detectSeriesSource(input) {
+      const value = input.trim().toLowerCase();
+      try {
+        const url = new URL(value);
+        const hostname = url.hostname.replace(/^www\./, '');
+        if (hostname === 'wmanhua.com') {
+          const match = value.match(/wmanhua\.com\/comic\/(\d+)\.html/);
+          if (match) return { source: 'wmanhua', comicId: match[1] };
+        }
+        if (hostname === 'baozimh.com' || hostname === 'twmanga.com') {
+          // Pola /comic/chapter/{slug}/{file}.html adalah URL CHAPTER (sudah
+          // ditangani alur biasa) — pastikan tidak ikut cocok di sini.
+          // Series-nya /comic/{slug} tanpa segmen "chapter" dan tanpa .html.
+          // twmanga.com juga didukung (sumber datanya sama: baozimh).
+          const match = value.match(/(?:baozimh\.com|twmanga\.com)\/comic\/([^/?#]+)\/?(?:[?#]|$)/);
+          if (match && match[1] !== 'chapter') return { source: 'baozimh', comicId: match[1] };
+        }
+        // jjaptoon rutin ganti domain (nomor + TLD) — pola sama seperti yang
+        // dipakai detectSource untuk chapter, supaya tahan kalau situsnya
+        // pindah lagi. Series-nya /comics/{id} (jamak), beda dari chapter
+        // yang /chapters/{id} (jamak juga tapi path berbeda), jadi tidak
+        // ada risiko tabrakan.
+        if (/^jjaptoon\d*\.(com|net|vip|xyz|top|me)$/.test(hostname)) {
+          const match = value.match(/\/comics\/(\d+)/);
+          if (match) return { source: 'jjaptoon', comicId: match[1] };
+        }
+        // jjabtoon: situs BEDA dari jjaptoon (lihat catatan detectSource di
+        // atas). Series-nya /webtoons/{id}, beda dari chapter yang
+        // /episodes/{id}.
+        if (/^jjabtoon\d*\.(com|net|vip|xyz|top|me)$/.test(hostname)) {
+          const match = value.match(/\/webtoons\/(\d+)/);
+          if (match) return { source: 'jjabtoon', comicId: match[1] };
+        }
+        // GoodToon: series-nya /manga/{slug}/ TANPA segmen nomor chapter di
+        // belakang. Chapter-nya /manga/{slug}/{nomor}/ atau
+        // /manga/{slug}/chapter-{nomor}/ (sudah ditangani alur chapter biasa)
+        // — regex ini sengaja menolak kalau ada segmen tambahan setelah
+        // slug supaya tidak salah kena URL chapter.
+        if (/^goodtoon\d*\.(com|net|top|xyz)$/.test(hostname)) {
+          const match = value.match(/\/manga\/([^/?#]+)\/?(?:[?#]|$)/);
+          if (match) return { source: 'goodtoon', comicId: match[1] };
+        }
+        if (hostname === 'manwa.me') {
+          // Series-nya /book/{id}, beda dari chapter yang /chapter/{id}
+          // (singular) — tidak ada risiko tabrakan.
+          const match = value.match(/manwa\.me\/book\/(\d+)/);
+          if (match) return { source: 'manwa', comicId: match[1] };
+        }
+        if (hostname.replace(/^m\./, '') === 'koudaimh.com') {
+          // Series-nya /manhua/{slug} tanpa segmen nomor chapter + .html di
+          // belakang. Chapter-nya /manhua/{slug}/{id}.html (sudah ditangani
+          // alur biasa) — pastikan pola ini TIDAK ikut cocok di sini.
+          const chapterLike = /\/manhua\/[^/]+\/\d+\.html/.test(value);
+          if (!chapterLike) {
+            const match = value.match(/koudaimh\.com\/manhua\/([^/?#]+)\/?(?:[?#]|$)/);
+            if (match) return { source: 'koudaimh', comicId: match[1] };
+          }
+        }
+      } catch(e) { return null; }
+      return null;
+    }
+
+    function getSourceConfig(source) {
+      const configs = {
+        jjaptoon: {
+          name: 'Jjaptoon',
+          referer: 'https://www.jjaptoon008.com/',
+          // true = referer unduhan diambil otomatis dari origin URL tempelan
+          // user (pasti domain aktif), bukan dari field referer di atas —
+          // jadi tidak perlu update manual tiap situsnya pindah domain.
+          dynamicReferer: true,
+          extractId: (input) => {
+            const match = input.match(/\/chapters\/(\d+)/);
+            if (match) return match[1];
+            const numMatch = input.match(/^(\d{6,})$/);
+            if (numMatch) return numMatch[1];
+            return null;
+          },
+          buildUrl: (id, input) => {
+            if (input.includes('jjaptoon')) return input;
+            return `${DEFAULT_JJAPTOON_ORIGIN}/chapters/${id}`;
+          }
+        },
+        // jjabtoon: situs BEDA dari jjaptoon (ditemukan terpisah 2 Sep
+        // 2026, keduanya hidup berdampingan — lihat catatan lengkap di
+        // detectSource). Domain aktif jjabtoon001.com, path chapter
+        // /episodes/{id} (bukan /chapters/{id} seperti jjaptoon). Entri
+        // config sendiri, JANGAN digabung lagi dengan jjaptoon di atas.
+        jjabtoon: {
+          name: 'Jjabtoon',
+          referer: 'https://jjabtoon001.com/',
+          // Lihat catatan dynamicReferer di jjaptoon: referer unduhan ikut
+          // origin URL tempelan user supaya tahan pindah domain.
+          dynamicReferer: true,
+          extractId: (input) => {
+            const match = input.match(/\/episodes\/(\d+)/);
+            if (match) return match[1];
+            // SENGAJA tidak menerima ID angka polos: input digit murni selalu
+            // dirutekan ke jjaptoon oleh detectSource (lihat di atas), jadi
+            // menerima digit di sini hanya menciptakan jalur mati yang tidak
+            // pernah tercapai. Untuk jjabtoon, tempel URL lengkap /episodes/.
+            return null;
+          },
+          buildUrl: (id, input) => {
+            if (/jjabtoon/.test(input)) return input;
+            return `${DEFAULT_JJABTOON_ORIGIN}/episodes/${id}`;
+          }
+        },
+        // GoodToon: tema WordPress Madara, entri TERPISAH dari jjaptoon/
+        // jjabtoon. ID chapter-nya butuh comic slug + nomor chapter
+        // sekaligus (URL /manga/{slug}/{nomor}/), bukan angka tunggal
+        // seperti platform lain — jadi buildUrl cukup mengembalikan input
+        // apa adanya (sama seperti pola koudaimh), tidak membangun ulang
+        // URL dari ID saja. extractId dipakai cuma untuk validasi format
+        // (memastikan ada slug + nomor), bukan untuk reconstruct URL.
+        goodtoon: {
+          name: 'GoodToon',
+          referer: 'https://www.goodtoon004.com/',
+          // Lihat catatan dynamicReferer di jjaptoon: referer unduhan ikut
+          // origin URL tempelan user supaya tahan pindah domain.
+          dynamicReferer: true,
+          extractId: (input) => {
+            const match = input.match(/\/manga\/([^/]+)\/(?:chapter-)?(\d+)\/?/);
+            if (match) return `${match[1]}/${match[2]}`;
+            return null;
+          },
+          buildUrl: (id, input) => input
+        },
+        baozimh: {
+          name: 'Baozimh',
+          referer: 'https://appgb.baozimh.com/',
+          extractId: (input) => {
+            const match = input.match(/(?:twmanga\.com|baozimh\.com)\/(?:comic\/chapter|baozimhapp\/comic\/chapter)\/([^/]+)\/([^/?#]+)\.html/);
+            return match ? `${match[1]}/${match[2]}` : null;
+          },
+          buildUrl: (id, input) => input
+        },
+        manwa: {
+          name: 'Manwa',
+          referer: 'https://manwa.me/',
+          extractId: (input) => {
+            const match = input.match(/\/chapter\/(\d+)/);
+            return match ? match[1] : null;
+          },
+          buildUrl: (id, input) => {
+            if (input.includes('manwa.me')) return input;
+            return `https://manwa.me/chapter/${id}`;
+          }
+        },
+        wmanhua: {
+          name: 'Wmanhua',
+          referer: 'https://www.wmanhua.com/',
+          extractId: (input) => {
+            const match = input.match(/wmanhua\.com\/chapter\/(\d+)-(\d+)\.html/);
+            return match ? `${match[1]}-${match[2]}` : null;
+          },
+          buildUrl: (id, input) => input
+        },
+        koudaimh: {
+          name: 'Koudaimh',
+          // Sengaja dikosongkan: gambar chapter Koudaimh di-host di CDN
+          // shimolife.com yang halaman aslinya memuatnya dengan
+          // referrerpolicy="no-referrer" — browser asli memang tidak
+          // pernah mengirim Referer sama sekali ke CDN ini. Worker juga
+          // sudah menangani ini di sisi generic proxy (skip Referer/Origin
+          // khusus untuk *.shimolife.com), jadi nilai kosong di sini
+          // konsisten dengan itu dan tidak mengirim parameter yang percuma.
+          referer: '',
+          extractId: (input) => {
+            const match = input.match(/koudaimh\.com\/manhua\/([^/]+)\/(\d+)\.html/);
+            return match ? `${match[1]}/${match[2]}` : null;
+          },
+          buildUrl: (id, input) => input
+        }
+      };
+      return configs[source] || null;
+    }
+
+    function extractImages(source, data) {
+      if (source === 'jjaptoon') return (data.images || []).map(img => img.url);
+      if (source === 'jjabtoon') return (data.images || []).map(img => img.url);
+      if (source === 'goodtoon') return (data.images || []).map(img => img.url);
+      if (source === 'baozimh') return (data.images || []).map(img => rewriteBzcdnUrl(img.url));
+      if (source === 'manwa') return (data.images || []).map(img => img.url);
+      if (source === 'wmanhua') return (data.images || []).map(img => img.url);
+      if (source === 'koudaimh') return (data.images || []).map(img => img.url);
+      return [];
+    }
+
+    // ============================================================
+    // CHIP UI
+    // ============================================================
+
+    let chipSeq = 0;
+
+    function refreshQueueMeta(){
+      const chips = chapterList.querySelectorAll('.chip-row').length;
+      queueHead.style.display = chips === 0 ? 'none' : 'flex';
+      queueCount.textContent = chips;
+      updateTabBadges();
+    }
+
+    const SOURCE_BADGE_CLASS = { jjaptoon: 'jjaptoon', jjabtoon: 'jjabtoon', goodtoon: 'goodtoon', baozimh: 'baozimh', manwa: 'manwa', wmanhua: 'wmanhua', koudaimh: 'koudaimh' };
+    const MAX_THUMBS = (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) ? 3 : 8;
+
+    function createChip() {
+      chipSeq += 1;
+      const id = `chip-${chipSeq}`;
+
+      const row = document.createElement('div');
+      row.className = 'chip-row';
+      row.id = id;
+      row.innerHTML = `
+        <div class="chip-head">
+          <span class="chip-num">${chipSeq}</span>
+          <span class="chip-badge" style="display:none"></span>
+          <span class="chip-status">fetching</span>
+        </div>
+        <div class="chip-body">
+          <p class="chip-comic-title">Memuat…</p>
+          <p class="chip-chapter-title" style="display:none"></p>
+          <p class="chip-page-count" style="display:none"></p>
+        </div>
+        <div class="chip-progress-row">
+          <div class="progress-mini"><div style="width:0%"></div></div>
+        </div>
+        <button type="button" class="btn-dl-mini" style="display:none">Unduh</button>
+        <div class="chip-thumbs" style="display:none"></div>
+      `;
+      chapterList.prepend(row);
+      refreshQueueMeta();
+      return row;
+    }
+
+    function updateChip(row, { title, comicTitle, chapterTitle, pageCount, source, status, statusClass, percent, error }) {
+      if (title !== undefined) row.querySelector('.chip-comic-title').textContent = title;
+      if (comicTitle !== undefined) row.querySelector('.chip-comic-title').textContent = comicTitle;
+      if (chapterTitle !== undefined) {
+        const el = row.querySelector('.chip-chapter-title');
+        el.textContent = chapterTitle;
+        el.style.display = chapterTitle ? '' : 'none';
+      }
+      if (pageCount !== undefined) {
+        const el = row.querySelector('.chip-page-count');
+        el.textContent = `${pageCount} halaman`;
+        el.style.display = '';
+      }
+      if (source !== undefined) {
+        const badge = row.querySelector('.chip-badge');
+        badge.textContent = source;
+        badge.className = 'chip-badge' + (SOURCE_BADGE_CLASS[source.toLowerCase()] ? ` ${SOURCE_BADGE_CLASS[source.toLowerCase()]}` : '');
+        badge.style.display = '';
+      }
+      if (status !== undefined) {
+        const el = row.querySelector('.chip-status');
+        el.textContent = status;
+        el.className = 'chip-status' + (statusClass ? ` ${statusClass}` : '');
+      }
+      if (percent !== undefined) {
+        row.querySelector('.progress-mini > div').style.width = percent + '%';
+      }
+      row.classList.toggle('error', !!error);
+    }
+
+    function renderThumbs(row, imageUrls) {
+      const wrap = row.querySelector('.chip-thumbs');
+      const shown = imageUrls.slice(0, MAX_THUMBS);
+      const remaining = imageUrls.length - shown.length;
+
+      wrap.innerHTML = '';
+      for (const url of shown) {
+        const img = document.createElement('img');
+        img.src = buildProxyUrl(url);
+        img.loading = 'lazy';
+        img.alt = '';
+        wrap.appendChild(img);
+      }
+      if (remaining > 0) {
+        const more = document.createElement('div');
+        more.className = 'chip-thumbs-more';
+        more.textContent = `+${remaining}`;
+        wrap.appendChild(more);
+      }
+      wrap.style.display = 'grid';
+    }
+
+    // ============================================================
+    // ALUR: FETCH METADATA
+    // ============================================================
+
+    async function fetchChapter(inputUrl) {
+      const currentGeneration = queueGeneration;
+      const row = createChip();
+
+      const source = detectSource(inputUrl);
+      if (!source) {
+        updateChip(row, { title: inputUrl, status: 'situs tidak dikenali', statusClass: 'error', error: true });
+        showToast('error', 'Situs tidak dikenali. Cek daftar situs yang didukung lewat tombol "!".');
+        return;
+      }
+
+      const config = getSourceConfig(source);
+      const id = config.extractId(inputUrl);
+
+      if (!id) {
+        updateChip(row, { title: inputUrl, status: 'format chapter tidak valid', statusClass: 'error', error: true });
+        showToast('error', `Format URL ${config.name} tidak dikenali.`);
+        return;
+      }
+
+      const targetUrl = config.buildUrl(id, inputUrl);
+
+      // Referer untuk unduhan gambar: kalau config bertanda dynamicReferer,
+      // pakai origin URL chapter yang ditempel user (selalu domain aktif —
+      // tidak perlu update manual saat situs pindah domain). Kalau tidak,
+      // pakai nilai tetap di config (baozimh/manwa/wmanhua stabil, koudaimh
+      // memang harus kosong karena CDN-nya no-referrer).
+      let downloadReferer = config.referer;
+      if (config.dynamicReferer) {
+        try {
+          downloadReferer = new URL(targetUrl).origin + '/';
+        } catch (e) { /* biarkan nilai config sebagai fallback */ }
+      }
+
+      updateChip(row, { comicTitle: config.name, source: config.name, status: 'fetching', statusClass: 'active', percent: 15 });
+      showToast('info', `Mengambil metadata dari ${config.name}...`, 2500);
+
+      let data;
+      try {
+        const res = await fetch(buildProxyUrl(targetUrl), { cache: 'no-store' });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          throw new Error(text || `HTTP ${res.status}`);
+        }
+
+        if (!res.ok || data.error) {
+          const extra = data.detail ? ` (${data.detail})` : '';
+          throw new Error((data.error || `HTTP ${res.status}`) + extra);
+        }
+      } catch (err) {
+        if (currentGeneration !== queueGeneration) return;
+        updateChip(row, { status: 'gagal fetch: ' + err.message, statusClass: 'error', error: true, percent: 0 });
+        showToast('error', 'Gagal fetch chapter: ' + err.message);
+        return;
+      }
+
+      if (currentGeneration !== queueGeneration) return;
+
+      const images = extractImages(source, data);
+      if (images.length === 0) {
+        updateChip(row, { status: 'tidak ada gambar', statusClass: 'error', error: true, percent: 0 });
+        showToast('warning', 'Chapter berhasil di-fetch, tapi tidak ada gambar di dalamnya.');
+        return;
+      }
+
+      const comicTitle = data.comic_title || config.name;
+      const chapterTitle = data.chapter_title || '';
+      const displayTitle = [comicTitle, chapterTitle].filter(Boolean).join('  ');
+
+      row._chapterData = { source, config, data, images, targetUrl, downloadReferer };
+
+      updateChip(row, {
+        comicTitle,
+        chapterTitle,
+        pageCount: images.length,
+        status: `${images.length} halaman siap`,
+        statusClass: 'done',
+        percent: 100
+      });
+      renderThumbs(row, images);
+      showToast('success', `${displayTitle} — ${images.length} halaman siap diunduh.`);
+
+      const dlBtn = row.querySelector('.btn-dl-mini');
+      dlBtn.style.display = '';
+      dlBtn.addEventListener('click', () => downloadChapter(row));
+    }
+
+    // ============================================================
+    // ALUR: DOWNLOAD GAMBAR + BUILD ZIP
+    // ============================================================
+
+    async function downloadChapter(row) {
+      const stored = row._chapterData;
+      if (!stored) return;
+
+      if (typeof JSZip === 'undefined') {
+        showToast('error', 'JSZip gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.');
+        return;
+      }
+      if (typeof saveAs === 'undefined') {
+        showToast('error', 'FileSaver gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.');
+        return;
+      }
+
+      const currentGeneration = queueGeneration;
+      const { source, config, targetUrl } = stored;
+      // downloadReferer dihitung saat fetch metadata (lihat fetchChapter) —
+      // fallback ke config.referer untuk data lama yang tersimpan
+      // sebelum field ini ada.
+      const downloadReferer = stored.downloadReferer !== undefined ? stored.downloadReferer : config.referer;
+      let data = stored.data;
+      let images = stored.images.slice();
+      let signedUrlRevision = 0;
+      let signedRefreshPromise = null;
+      let signedRefreshCount = 0;
+      const MAX_SIGNED_URL_REFRESHES = 4;
+      const dlBtn = row.querySelector('.btn-dl-mini');
+      dlBtn.disabled = true;
+
+      async function refreshKoudaimhSignedUrls(expectedRevision = signedUrlRevision) {
+        if (source !== 'koudaimh') return false;
+        if (expectedRevision !== signedUrlRevision) return true;
+        if (signedRefreshCount >= MAX_SIGNED_URL_REFRESHES) return false;
+        if (!signedRefreshPromise) {
+          signedRefreshCount++;
+          signedRefreshPromise = (async () => {
+            const freshData = await fetchProxyJson(targetUrl);
+            const freshImages = extractImages(source, freshData);
+            if (!freshImages.length) throw new Error('Refresh Koudaimh tidak menghasilkan URL gambar');
+            if (images.length && freshImages.length !== images.length) {
+              throw new Error(`Jumlah halaman berubah setelah refresh: ${images.length} menjadi ${freshImages.length}`);
+            }
+            data = freshData;
+            images = freshImages;
+            stored.data = freshData;
+            stored.images = freshImages;
+            signedUrlRevision++;
+            return true;
+          })().finally(() => { signedRefreshPromise = null; });
+        }
+        return signedRefreshPromise;
+      }
+
+      try {
+        if (source === 'koudaimh') {
+          updateChip(row, { status: 'memperbarui link gambar', statusClass: 'active', percent: 0, error: false });
+          const freshData = await fetchProxyJson(targetUrl);
+          const freshImages = extractImages(source, freshData);
+          if (!freshImages.length) throw new Error('Koudaimh tidak mengembalikan gambar setelah refresh metadata');
+          data = freshData;
+          images = freshImages;
+          stored.data = freshData;
+          stored.images = freshImages;
+        }
+
+        updateChip(row, { status: `0/${images.length}`, statusClass: 'active', percent: 0, error: false });
+        showToast('info', `Mengunduh ${images.length} gambar...`, 2500);
+
+        const zip = new JSZip();
+        let success = 0;
+        let failed = 0;
+        let completed = 0;
+        let totalBytes = 0;
+        const failedPages = [];
+        // Statistik pemotong banner (khusus Baozimh, toggle aktif).
+        let bannerTopCut = 0, bannerBottomCut = 0, bannerKept = 0, bannerSkipped = 0;
+        let bannerEngineWarned = false;
+
+        // Setiap halaman minta "slot" dari semaphore GLOBAL (dibagi semua
+        // chapter yang sedang di-download bersamaan) sebelum benar-benar
+        // fetch — jadi walau semua downloadOne() di-trigger sekaligus di
+        // sini, eksekusi aktualnya tetap dibatasi DOWNLOAD_CONCURRENCY
+        // secara total, bukan per-chapter.
+        async function downloadOne(i) {
+          if (currentGeneration !== queueGeneration) return;
+
+          await acquireDownloadSlot();
+          try {
+            if (currentGeneration !== queueGeneration) return;
+
+            let url = images[i];
+            const ext = getExtensionFromUrl(url);
+            const filename = `${String(i + 1).padStart(3, '0')}.${ext}`;
+
+            // Retry ringan (maks 3 percobaan, jeda singkat antar percobaan)
+            // sebelum benar-benar menyerah pada satu gambar. Ditambahkan
+            // karena sumber seperti Koudaimh melayani gambar dari CDN
+            // bertanda tangan (shimolife.com) yang sesekali membalas error
+            // sesaat/rate-limit untuk sebagian kecil request dalam satu
+            // batch — tanpa retry, kegagalan sekali fetch langsung membuat
+            // halaman itu hilang permanen dari ZIP tanpa diberi kesempatan
+            // kedua (lihat laporan bug: halaman bolong acak, bukan cuma
+            // halaman pertama).
+            const MAX_ATTEMPTS = config.name === 'Koudaimh' ? 5 : 3;
+            let lastErr = null;
+            let ok = false;
+            let refreshedForPage = false;
+
+            for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+              if (currentGeneration !== queueGeneration) return;
+              url = images[i];
+              const revisionAtAttempt = signedUrlRevision;
+              try {
+                const imgProxyUrl = buildProxyUrl(url, downloadReferer);
+                const res = await fetch(imgProxyUrl, { cache: 'no-store' });
+                if (!res.ok) {
+                  // Diagnostik lebih detail dari sekadar status code —
+                  // worker biasanya balikin body JSON berisi alasan (lihat
+                  // handler generic proxy: { error, contentType }) saat
+                  // menolak media, dan itu jauh lebih berguna untuk
+                  // diagnosis daripada cuma "HTTP 415".
+                  const resContentType = res.headers.get('content-type') || '';
+                  let bodyDetail = '';
+                  try {
+                    if (resContentType.includes('application/json')) {
+                      const errJson = await res.json();
+                      bodyDetail = errJson.error ? `${errJson.error}${errJson.contentType ? ` (upstream content-type: ${errJson.contentType})` : ''}` : JSON.stringify(errJson);
+                    } else {
+                      bodyDetail = (await res.text()).slice(0, 150);
+                    }
+                  } catch { /* body tidak terbaca, biarkan bodyDetail kosong */ }
+                  const requestError = new Error(`HTTP ${res.status}${bodyDetail ? ` — ${bodyDetail}` : ''}`);
+                  requestError.status = res.status;
+                  throw requestError;
+                }
+                const blob = await res.blob();
+                // Ganti dari cek "ukuran < 1000 bytes" (salah tangkap
+                // strip gambar asli yang memang tipis) menjadi cek hash
+                // konten terhadap placeholder Koudaimh yang sudah dikenal
+                // — lihat penjelasan KNOWN_PLACEHOLDER_HASHES di atas.
+                if (source === 'koudaimh' && blob.size < 5000) {
+                  const hash = await sha256Hex(blob);
+                  if (KNOWN_PLACEHOLDER_HASHES.has(hash)) {
+                    throw Object.assign(new Error(`gambar placeholder (CDN membalas dummy 1px, hash cocok)`), { status: 403 });
+                  }
+                }
+                // Pemotong banner otomatis — KHUSUS Baozimh + toggle aktif.
+                // maybeCropBanner tidak pernah throw dan tidak pernah
+                // menghilangkan halaman: gagal = blob asli.
+                let outBlob = blob;
+                let outName = filename;
+                if (source === 'baozimh' && isBannerCropEnabled()) {
+                  const cropRes = await maybeCropBanner(blob);
+                  if (cropRes.engineFailed && !bannerEngineWarned) {
+                    bannerEngineWarned = true;
+                    showToast('warning', 'Engine banner gagal dimuat — halaman disimpan utuh tanpa dipotong.', 5000);
+                  }
+                  if (cropRes.cut === 'top') {
+                    bannerTopCut++;
+                    outBlob = cropRes.blob;
+                    if (!/^jpe?g$/i.test(ext)) outName = `${String(i + 1).padStart(3, '0')}.jpg`;
+                  } else if (cropRes.cut === 'bottom') {
+                    bannerBottomCut++;
+                    outBlob = cropRes.blob;
+                    if (!/^jpe?g$/i.test(ext)) outName = `${String(i + 1).padStart(3, '0')}.jpg`;
+                  } else if (cropRes.skipped) {
+                    bannerSkipped++;
+                  } else {
+                    bannerKept++;
+                  }
+                }
+                zip.file(outName, outBlob);
+                totalBytes += outBlob.size;
+                success++;
+                ok = true;
+                break;
+              } catch (err) {
+                lastErr = err;
+                const possiblyExpired = source === 'koudaimh' && [401, 403, 404].includes(err.status);
+                if (possiblyExpired && !refreshedForPage) {
+                  refreshedForPage = true;
+                  try {
+                    const refreshed = await refreshKoudaimhSignedUrls(revisionAtAttempt);
+                    if (refreshed) continue;
+                  } catch (refreshErr) {
+                    lastErr = new Error(`${err.message}; refresh signed URL gagal: ${refreshErr.message}`);
+                  }
+                }
+                if (attempt < MAX_ATTEMPTS) {
+                  // Jeda lebih longgar sebelum retry (700ms, lalu 1400ms) —
+                  // rate-limit di sisi CDN biasanya butuh sedikit waktu
+                  // untuk pulih, jeda yang terlalu singkat kemungkinan
+                  // besar akan gagal lagi dengan alasan yang sama.
+                  await new Promise((resolve) => setTimeout(resolve, (config.name === 'Koudaimh' ? 1100 : 700) * attempt));
+                }
+              }
+            }
+
+            if (!ok) {
+              failed++;
+              failedPages.push({ page: i + 1, filename, error: lastErr ? lastErr.message : 'unknown' });
+            }
+
+            completed++;
+            if (currentGeneration !== queueGeneration) return;
+            const pct = Math.round((completed / images.length) * 90);
+            updateChip(row, { status: `${completed}/${images.length}`, percent: pct });
+          } finally {
+            releaseDownloadSlot();
+          }
+        }
+
+        await Promise.all(images.map((_, i) => downloadOne(i)));
+
+        if (currentGeneration !== queueGeneration) return;
+
+        if (success === 0) {
+          updateChip(row, { status: 'semua gambar gagal diunduh', statusClass: 'error', error: true, percent: 100 });
+          showToast('error', 'Semua gambar gagal diunduh. Coba lagi nanti.');
+          return;
+        }
+
+        // ZIP HANYA dibuat kalau seluruh halaman berhasil — sebelumnya ZIP
+        // tetap disimpan meski sebagian gagal (cuma dikasih peringatan),
+        // yang membuat hasil terpotong terlihat seperti proses normal dan
+        // baru ketahuan belakangan setelah dibuka. Menolak total di sini
+        // memaksa masalah terlihat segera, bukan tersembunyi di dalam file
+        // yang sudah tersimpan.
+        if (failed > 0) {
+          console.warn('[Trial Fetch] Halaman gagal diunduh, ZIP tidak disimpan:', failedPages);
+          updateChip(row, { status: `${failed} halaman gagal — coba lagi`, statusClass: 'error', error: true, percent: 100 });
+
+          const shown = failedPages.slice(0, 15).map((f) => f.page).join(', ');
+          const more = failedPages.length > 15 ? ` (+${failedPages.length - 15} lainnya)` : '';
+          showToast('error', `${failed} dari ${images.length} halaman gagal diunduh (nomor: ${shown}${more}). ZIP tidak disimpan agar hasil tidak terpotong.`, 6000);
+
+          // Detail lengkap (status/content-type per halaman gagal) langsung
+          // ditampilkan lewat alert() — bukan cuma dilempar ke console —
+          // supaya bisa langsung di-screenshot tanpa perlu buka DevTools,
+          // yang merepotkan kalau diakses dari HP.
+          const detailLines = failedPages
+            .slice(0, 20)
+            .map((f) => `Halaman ${f.page} (${f.filename}): ${f.error}`)
+            .join('\n');
+          const extraNote = failedPages.length > 20 ? `\n\n(+${failedPages.length - 20} halaman lain, cek console untuk daftar lengkap)` : '';
+          setTimeout(() => {
+            alert(`${failed} dari ${images.length} halaman gagal diunduh — ZIP TIDAK disimpan:\n\n${detailLines}${extraNote}\n\nCoba "Unduh lagi" untuk mencoba ulang.`);
+          }, 300);
+          return;
+        }
+
+        updateChip(row, { status: 'membungkus zip', percent: 95 });
+
+        // Peringatan saja (bukan pembatasan keras) — browser menahan
+        // seluruh blob gambar + hasil ZIP di memori sekaligus selama
+        // proses ini, jadi chapter yang sangat besar bisa terasa berat di
+        // HP dengan RAM terbatas.
+        const totalMB = totalBytes / (1024 * 1024);
+        if (totalMB > 300) {
+          showToast('warning', `Ukuran chapter ini besar (~${Math.round(totalMB)}MB) — proses bisa terasa berat di HP dengan RAM terbatas.`, 4000);
+        }
+
+        // Nama ZIP cuma pakai chapter_title (tanpa judul komik di depan) —
+        // sesuai permintaan, meski artinya chapter dari komik berbeda yang
+        // kebetulan punya judul/nomor chapter sama bisa saling menimpa file
+        // di folder Download kalau di-download di waktu yang berdekatan.
+        const zipBaseName = data.chapter_title || data.comic_title || 'chapter';
+        const zipName = `${sanitizeFilename(zipBaseName)}.zip`;
+
+        // STORE (tanpa kompresi ulang), bukan DEFLATE — gambar JPG/WebP/AVIF
+        // sudah terkompresi sendiri, jadi DEFLATE cuma menghabiskan CPU dan
+        // waktu tanpa mengurangi ukuran file secara berarti (kadang malah
+        // lebih lambat karena overhead kompresi yang sia-sia).
+        const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+
+        if (currentGeneration !== queueGeneration) return;
+
+        saveAs(zipBlob, zipName);
+
+        updateChip(row, { status: 'selesai', statusClass: 'done', percent: 100 });
+        // Ringkasan potong banner (khusus Baozimh, toggle aktif, ada yang diproses).
+        let bannerSummary = '';
+        if (source === 'baozimh' && isBannerCropEnabled() && (bannerTopCut + bannerBottomCut + bannerKept + bannerSkipped) > 0) {
+          bannerSummary = ` — banner: ${bannerTopCut + bannerBottomCut} dipotong (atas ${bannerTopCut}, bawah ${bannerBottomCut}), ${bannerKept} utuh${bannerSkipped ? `, ${bannerSkipped} full-banner dilewati` : ''}`;
+        }
+        showToast('success', `Berhasil! ${zipName} tersimpan (${success} halaman${bannerSummary}).`);
+
+        dlBtn.textContent = 'Unduh lagi';
+      } catch (err) {
+        if (currentGeneration !== queueGeneration) return;
+        updateChip(row, { status: 'gagal: ' + err.message, statusClass: 'error', error: true });
+        showToast('error', 'Proses download gagal: ' + err.message);
+      } finally {
+        if (currentGeneration === queueGeneration) dlBtn.disabled = false;
+      }
+    }
+
+    // ============================================================
+    // PEMOTONG BANNER OTOMATIS (khusus sumber Baozimh)
+    // ============================================================
+    // Mesin yang SAMA dipakai Baozi Downloader V4: template matching
+    // OpenCV terhadap 4 template banner (690/800/1280/2000 × 200px),
+    // 100% lokal di browser. Bedanya di sini OpenCV dimuat MALAS
+    // (lazy): script + template baru diunduh/disiapkan saat download
+    // Baozimh pertama dengan toggle aktif dimulai — tab/sumber lain
+    // tidak membayar biayanya sama sekali.
+    const BANNER_HEIGHT = 200;
+    const BANNER_TEMPLATE_TIMEOUT_MS = 5000;
+    const BANNER_WIDTH_MATCH_TOLERANCE = 0.25;
+    const BANNER_MATCH_THRESHOLD = 0.58;
+    const BANNER_OPENCV_SOURCES = [
+      'opencv/opencv.js',
+      'https://docs.opencv.org/4.8.0/opencv.js',
+      'https://docs.opencv.org/4.7.0/opencv.js',
+      'https://docs.opencv.org/4.6.0/opencv.js'
+    ];
+
+    let bannerTemplateMats = [];
+    let bannerOpencvReady = false;
+    let bannerReady = false;
+    let bannerEnginePromise = null;
+    let bannerWarnedThisSession = false;
+
+    function isBannerCropEnabled() {
+      const el = document.getElementById('baozimh-crop-toggle');
+      return el ? el.checked : true;
+    }
+
+    function bannerClamp01(v) {
+      if (!Number.isFinite(v)) return 0;
+      return Math.max(0, Math.min(1, v));
+    }
+
+    function bannerSafeDelete(mat) {
+      try { if (mat && typeof mat.delete === 'function') mat.delete(); } catch (_) {}
+    }
+
+    function bannerDeleteTemplates() {
+      bannerTemplateMats.forEach(t => {
+        bannerSafeDelete(t.raw); bannerSafeDelete(t.gray); bannerSafeDelete(t.edge);
+        bannerSafeDelete(t.mask); bannerSafeDelete(t.dark);
+      });
+      bannerTemplateMats = [];
+    }
+
+    function loadOpenCvScriptOnce() {
+      if (bannerOpencvReady) return Promise.resolve(true);
+      if (typeof cv !== 'undefined' && cv.Mat) {
+        try { const m = new cv.Mat(); m.delete(); bannerOpencvReady = true; return Promise.resolve(true); }
+        catch (_) { /* runtime belum siap, lanjut ke polling di bawah */ }
+      }
+      return new Promise((resolve) => {
+        let idx = -1;
+        const next = () => {
+          idx++;
+          if (idx >= BANNER_OPENCV_SOURCES.length) { resolve(false); return; }
+          const url = BANNER_OPENCV_SOURCES[idx];
+          const s = document.createElement('script');
+          s.async = true;
+          s.src = url;
+          const timer = setTimeout(() => fail(), url.startsWith('http') ? 60000 : 8000);
+          const done = (ok) => {
+            clearTimeout(timer);
+            if (s.parentNode) s.parentNode.removeChild(s);
+            if (ok) waitRuntime();
+            else next();
+          };
+          const fail = () => done(false);
+          s.onload = () => done(true);
+          s.onerror = fail;
+          document.head.appendChild(s);
+        };
+        const waitRuntime = () => {
+          if (typeof cv !== 'undefined' && cv.onRuntimeInitialized !== undefined && !bannerOpencvReady) {
+            cv.onRuntimeInitialized = () => { bannerOpencvReady = true; };
+          }
+          let attempts = 0;
+          const iv = setInterval(() => {
+            try {
+              if (typeof cv !== 'undefined' && cv.Mat) {
+                const m = new cv.Mat(); m.delete();
+                clearInterval(iv);
+                bannerOpencvReady = true;
+                resolve(true);
+                return;
+              }
+            } catch (_) { /* wasm belum siap */ }
+            if (++attempts > 200) { clearInterval(iv); next(); }
+          }, 100);
+        };
+        next();
+      });
+    }
+
+    function bannerWaitForImg(img) {
+      return new Promise((resolve) => {
+        if (img.complete && img.naturalWidth > 0) { resolve(img); return; }
+        let done = false;
+        const finish = (v) => { if (done) return; done = true; img.onload = null; img.onerror = null; resolve(v); };
+        const timer = setTimeout(() => finish(null), BANNER_TEMPLATE_TIMEOUT_MS);
+        img.onload = () => { clearTimeout(timer); finish(img.naturalWidth > 0 ? img : null); };
+        img.onerror = () => { clearTimeout(timer); finish(null); };
+      });
+    }
+
+    function bannerImgToCanvas(img, crop = null) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (crop) {
+        canvas.width = crop.sw; canvas.height = crop.sh;
+        ctx.drawImage(img, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, crop.sw, crop.sh);
+      } else {
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        ctx.drawImage(img, 0, 0);
+      }
+      return canvas;
+    }
+
+    function bannerCanvasToGray(canvas) {
+      const rgba = cv.imread(canvas);
+      const gray = new cv.Mat();
+      try { cv.cvtColor(rgba, gray, cv.COLOR_RGBA2GRAY); }
+      finally { bannerSafeDelete(rgba); }
+      return gray;
+    }
+
+    function bannerCreateDarkMask(rawMat) {
+      const dark = new cv.Mat();
+      const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+      cv.threshold(rawMat, dark, 135, 255, cv.THRESH_BINARY_INV);
+      cv.morphologyEx(dark, dark, cv.MORPH_OPEN, kernel);
+      cv.dilate(dark, dark, kernel);
+      kernel.delete();
+      return dark;
+    }
+
+    function bannerPreprocess(grayMat, tw, th) {
+      const raw = new cv.Mat(), equalized = new cv.Mat(), blurred = new cv.Mat(), edge = new cv.Mat();
+      cv.resize(grayMat, raw, new cv.Size(tw, th), 0, 0, cv.INTER_AREA);
+      cv.equalizeHist(raw, equalized);
+      cv.GaussianBlur(equalized, blurred, new cv.Size(3, 3), 0, 0, cv.BORDER_DEFAULT);
+      cv.Canny(blurred, edge, 45, 135);
+      const dark = bannerCreateDarkMask(raw);
+      blurred.delete();
+      return { raw, gray: equalized, edge, dark };
+    }
+
+    function bannerCreateMask(rawMat) {
+      const mask = new cv.Mat();
+      const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+      cv.threshold(rawMat, mask, 246, 255, cv.THRESH_BINARY_INV);
+      cv.dilate(mask, mask, kernel);
+      kernel.delete();
+      return mask;
+    }
+
+    function bannerMatchSameSize(src, templ) {
+      const result = new cv.Mat();
+      cv.matchTemplate(src, templ, result, cv.TM_CCOEFF_NORMED);
+      const mm = cv.minMaxLoc(result);
+      result.delete();
+      return bannerClamp01(mm.maxVal);
+    }
+
+    function bannerMeanAbs(src, templ, mask = null) {
+      const diff = new cv.Mat();
+      cv.absdiff(src, templ, diff);
+      const mean = mask ? cv.mean(diff, mask)[0] : cv.mean(diff)[0];
+      diff.delete();
+      return bannerClamp01(1 - ((mean || 255) / 255));
+    }
+
+    function bannerDarkSim(regionDark, templateDark, rPx, tPx) {
+      if (!rPx || !tPx) return 0;
+      const inter = new cv.Mat(), union = new cv.Mat();
+      cv.bitwise_and(regionDark, templateDark, inter);
+      cv.bitwise_or(regionDark, templateDark, union);
+      const interCount = cv.countNonZero(inter);
+      const unionCount = cv.countNonZero(union);
+      inter.delete(); union.delete();
+      const recall = tPx ? interCount / tPx : 0;
+      const precision = rPx ? interCount / rPx : 0;
+      const iou = unionCount ? interCount / unionCount : 0;
+      const f1 = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+      return bannerClamp01((f1 * 0.75) + (iou * 0.25));
+    }
+
+    async function loadBannerTemplates() {
+      const imgs = [
+        document.getElementById('banner690'),
+        document.getElementById('banner800'),
+        document.getElementById('banner1280'),
+        document.getElementById('banner2000')
+      ].filter(Boolean);
+      const loaded = (await Promise.all(imgs.map(bannerWaitForImg))).filter(Boolean);
+      bannerDeleteTemplates();
+      for (const img of loaded) {
+        if (!img.naturalWidth || !img.naturalHeight) continue;
+        let grayRaw = null, norm = null, mask = null;
+        try {
+          grayRaw = bannerCanvasToGray(bannerImgToCanvas(img));
+          norm = bannerPreprocess(grayRaw, img.naturalWidth, img.naturalHeight || BANNER_HEIGHT);
+          mask = bannerCreateMask(norm.raw);
+          const maskPx = cv.countNonZero(mask);
+          const edgePx = cv.countNonZero(norm.edge);
+          const darkPx = cv.countNonZero(norm.dark);
+          bannerSafeDelete(grayRaw); grayRaw = null;
+          if (maskPx < 250) {
+            bannerSafeDelete(norm.raw); bannerSafeDelete(norm.gray);
+            bannerSafeDelete(norm.edge); bannerSafeDelete(norm.dark);
+            bannerSafeDelete(mask); norm = null; mask = null;
+            continue;
+          }
+          bannerTemplateMats.push({
+            id: img.id, width: img.naturalWidth, height: img.naturalHeight || BANNER_HEIGHT,
+            edgePixels: edgePx, darkPixels: darkPx,
+            raw: norm.raw, gray: norm.gray, edge: norm.edge, dark: norm.dark, mask
+          });
+          norm = null; mask = null;
+        } catch (_) {
+          if (norm) { bannerSafeDelete(norm.raw); bannerSafeDelete(norm.gray); bannerSafeDelete(norm.edge); bannerSafeDelete(norm.dark); }
+          bannerSafeDelete(mask); bannerSafeDelete(grayRaw);
+        }
+      }
+      bannerReady = bannerTemplateMats.length > 0;
+      return bannerReady;
+    }
+
+    // Single-flight: semua halaman yang di-download paralel menunggu
+    // promise yang sama, engine cuma disiapkan sekali per sesi.
+    function ensureBannerEngine() {
+      if (bannerReady) return Promise.resolve(true);
+      if (!bannerEnginePromise) {
+        bannerEnginePromise = (async () => {
+          const okCv = await loadOpenCvScriptOnce();
+          if (!okCv) return false;
+          return await loadBannerTemplates();
+        })().catch(() => false);
+      }
+      return bannerEnginePromise;
+    }
+
+    function bannerDetectFull(grayMat, w, h) {
+      if (h > 250 || h < 150 || w < 300) return { isBanner: false, score: 0, confidence: 'none' };
+      const bg = new cv.Mat();
+      try { cv.threshold(grayMat, bg, 245, 255, cv.THRESH_BINARY); }
+      catch (_) { bannerSafeDelete(bg); return { isBanner: false, score: 0, confidence: 'none' }; }
+      const whiteRatio = cv.countNonZero(bg) / (w * h);
+      bannerSafeDelete(bg);
+      if (whiteRatio < 0.80 || whiteRatio > 0.99) return { isBanner: false, score: 0, confidence: 'none' };
+      const halfW = Math.floor(w / 2);
+      const left = grayMat.roi(new cv.Rect(0, 0, halfW, h));
+      const right = grayMat.roi(new cv.Rect(w - halfW, 0, halfW, h));
+      const flipped = new cv.Mat(), diff = new cv.Mat();
+      let sym = 0;
+      try {
+        cv.flip(right, flipped, 1);
+        cv.absdiff(left, flipped, diff);
+        sym = bannerClamp01(1 - ((cv.mean(diff)[0] || 255) / 255));
+      } finally {
+        bannerSafeDelete(left); bannerSafeDelete(right);
+        bannerSafeDelete(flipped); bannerSafeDelete(diff);
+      }
+      if (sym < 0.30) return { isBanner: false, score: 0, confidence: 'none' };
+      const thirdH = Math.floor(h / 3);
+      const zones = [{ y: 0, label: 'top' }, { y: thirdH, label: 'mid' }, { y: 2 * thirdH, label: 'bot' }];
+      let validZones = 0;
+      for (const z of zones) {
+        const zone = grayMat.roi(new cv.Rect(0, z.y, w, thirdH));
+        const mask = new cv.Mat();
+        try {
+          cv.threshold(zone, mask, z.label === 'top' ? 240 : 140, 255, cv.THRESH_BINARY_INV);
+          const ratio = cv.countNonZero(mask) / (w * thirdH);
+          if (z.label === 'top' && ratio >= 0.01 && ratio <= 0.15) validZones++;
+          if (z.label === 'mid' && ratio >= 0.02 && ratio <= 0.20) validZones++;
+          if (z.label === 'bot' && ratio >= 0.01 && ratio <= 0.15) validZones++;
+        } finally { bannerSafeDelete(mask); bannerSafeDelete(zone); }
+      }
+      if (validZones < 3) return { isBanner: false, score: 0, confidence: 'none' };
+      const centerW = Math.floor(w * 0.5);
+      const edgeW = Math.floor(w * 0.25);
+      const centerX = Math.floor((w - centerW) / 2);
+      const centerZone = grayMat.roi(new cv.Rect(centerX, 0, centerW, h));
+      const leftEdge = grayMat.roi(new cv.Rect(0, 0, edgeW, h));
+      const rightEdge = grayMat.roi(new cv.Rect(w - edgeW, 0, edgeW, h));
+      const cMask = new cv.Mat(), lMask = new cv.Mat(), rMask = new cv.Mat();
+      let centerContent = 0, leftContent = 1, rightContent = 1;
+      try {
+        cv.threshold(centerZone, cMask, 240, 255, cv.THRESH_BINARY_INV);
+        cv.threshold(leftEdge, lMask, 240, 255, cv.THRESH_BINARY_INV);
+        cv.threshold(rightEdge, rMask, 240, 255, cv.THRESH_BINARY_INV);
+        centerContent = cv.countNonZero(cMask) / (centerW * h);
+        leftContent = cv.countNonZero(lMask) / (edgeW * h);
+        rightContent = cv.countNonZero(rMask) / (edgeW * h);
+      } finally {
+        bannerSafeDelete(cMask); bannerSafeDelete(lMask); bannerSafeDelete(rMask);
+        bannerSafeDelete(centerZone); bannerSafeDelete(leftEdge); bannerSafeDelete(rightEdge);
+      }
+      const edgesEmpty = leftContent < 0.05 && rightContent < 0.05;
+      const centerHas = centerContent > 0.03;
+      if (!edgesEmpty || !centerHas) return { isBanner: false, score: 0, confidence: 'none' };
+      const score = bannerClamp01((whiteRatio * 0.25) + (sym * 0.20) + 0.50 + 0.05);
+      return {
+        isBanner: score >= 0.75, score,
+        confidence: score >= 0.85 ? 'high' : score >= 0.75 ? 'medium' : 'low'
+      };
+    }
+
+    function bannerRegionData(img, regionType) {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      if (h <= BANNER_HEIGHT) return null;
+      const sy = regionType === 'top' ? 0 : h - BANNER_HEIGHT;
+      const grayRaw = bannerCanvasToGray(bannerImgToCanvas(img, { sx: 0, sy, sw: w, sh: BANNER_HEIGHT }));
+      let blurred = null, edge = null, dark = null;
+      try {
+        edge = new cv.Mat(); blurred = new cv.Mat();
+        cv.GaussianBlur(grayRaw, blurred, new cv.Size(3, 3), 0, 0, cv.BORDER_DEFAULT);
+        cv.Canny(blurred, edge, 45, 135);
+        dark = bannerCreateDarkMask(grayRaw);
+        const edgePx = cv.countNonZero(edge);
+        const darkPx = cv.countNonZero(dark);
+        bannerSafeDelete(blurred); blurred = null;
+        return { edgePixels: edgePx, darkPixels: darkPx, raw: grayRaw, edge, dark, width: w };
+      } catch (_) {
+        bannerSafeDelete(grayRaw); bannerSafeDelete(edge); bannerSafeDelete(dark); bannerSafeDelete(blurred);
+        return null;
+      }
+    }
+
+    function bannerScoreRegion(region) {
+      let best = { score: 0, grayScore: 0, edgeScore: 0, maskScore: 0, darkScore: 0, templateId: '-', widthDiff: Infinity };
+      for (const tmpl of bannerTemplateMats) {
+        const widthDiff = Math.abs(region.width - tmpl.width) / region.width;
+        const widthConf = widthDiff <= BANNER_WIDTH_MATCH_TOLERANCE ? 1.0 : widthDiff <= 0.50 ? 0.7 : 0.4;
+        const rRaw = new cv.Mat(), rGray = new cv.Mat(), rEdge = new cv.Mat(), rDark = new cv.Mat();
+        let maskScore = 0, grayScore = 0, diffScore = 0, edgeScore = 0, darkScore = 0;
+        try {
+          cv.resize(region.raw, rRaw, new cv.Size(tmpl.width, tmpl.height), 0, 0, cv.INTER_AREA);
+          cv.equalizeHist(rRaw, rGray);
+          cv.resize(region.edge, rEdge, new cv.Size(tmpl.width, tmpl.height), 0, 0, cv.INTER_NEAREST);
+          cv.resize(region.dark, rDark, new cv.Size(tmpl.width, tmpl.height), 0, 0, cv.INTER_NEAREST);
+          maskScore = bannerMeanAbs(rRaw, tmpl.raw, tmpl.mask);
+          grayScore = bannerMatchSameSize(rGray, tmpl.gray);
+          diffScore = bannerMeanAbs(rRaw, tmpl.raw);
+          if (region.edgePixels > 60 && tmpl.edgePixels > 60) edgeScore = bannerMatchSameSize(rEdge, tmpl.edge);
+          if (region.darkPixels > 20 && tmpl.darkPixels > 20) darkScore = bannerDarkSim(rDark, tmpl.dark, region.darkPixels, tmpl.darkPixels);
+        } finally {
+          bannerSafeDelete(rRaw); bannerSafeDelete(rGray); bannerSafeDelete(rEdge); bannerSafeDelete(rDark);
+        }
+        const combined = bannerClamp01((maskScore * 0.25) + (grayScore * 0.30) + (edgeScore * 0.18) + (darkScore * 0.25) + (diffScore * 0.02));
+        const adjusted = combined * widthConf;
+        if (adjusted > best.score) {
+          best = { score: adjusted, grayScore, edgeScore, maskScore, darkScore, templateId: tmpl.id, widthDiff };
+        }
+      }
+      return best;
+    }
+
+    function bannerCheckRegion(img, regionType) {
+      const h = img.naturalHeight, w = img.naturalWidth;
+      if (h <= 250) {
+        const grayFull = bannerCanvasToGray(bannerImgToCanvas(img));
+        const r = bannerDetectFull(grayFull, w, h);
+        bannerSafeDelete(grayFull);
+        return { isBanner: r.isBanner, isFull: true, score: r.score, confidence: r.confidence };
+      }
+      if (h <= BANNER_HEIGHT) return { isBanner: false, score: 0, confidence: 'none' };
+      const region = bannerRegionData(img, regionType);
+      if (!region) return { isBanner: false, score: 0, confidence: 'none' };
+      try {
+        const best = bannerScoreRegion(region);
+        const shape = best.grayScore >= 0.30 || best.edgeScore >= 0.18 || best.darkScore >= 0.28;
+        const widthOk = best.widthDiff <= 0.50;
+        const strongText = best.darkScore >= 0.42 && (best.grayScore >= 0.22 || best.edgeScore >= 0.12 || best.maskScore >= 0.88);
+        const veryHigh = best.maskScore >= 0.93 && best.grayScore >= 0.45;
+        const normal = best.score >= BANNER_MATCH_THRESHOLD && shape && widthOk;
+        const isBanner = normal || strongText || veryHigh;
+        const confidence = best.score >= 0.78 && shape && widthOk ? 'high' : isBanner ? 'medium' : 'low';
+        return { isBanner, isFull: false, score: best.score, confidence };
+      } finally {
+        bannerSafeDelete(region.raw); bannerSafeDelete(region.edge); bannerSafeDelete(region.dark);
+      }
+    }
+
+    function bannerCrop(img, regionType) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const cut = Math.min(BANNER_HEIGHT, Math.max(1, h - 1));
+      canvas.width = w; canvas.height = h - cut;
+      if (regionType === 'top') ctx.drawImage(img, 0, cut, w, h - cut, 0, 0, w, h - cut);
+      else ctx.drawImage(img, 0, 0, w, h - cut, 0, 0, w, h - cut);
+      return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.94));
+    }
+
+    function bannerDecode(blob) {
+      return new Promise((resolve, reject) => {
+        const objUrl = URL.createObjectURL(blob);
+        const imgEl = new Image();
+        imgEl.onload = () => {
+          URL.revokeObjectURL(objUrl);
+          if (imgEl.naturalWidth > 0 && imgEl.naturalHeight > 0) resolve(imgEl);
+          else reject(new Error('dimensi gambar tidak valid'));
+        };
+        imgEl.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error('gagal decode gambar')); };
+        imgEl.src = objUrl;
+      });
+    }
+
+    // Potong banner satu halaman. TIDAK PERNAH throw: kalau engine gagal
+    // atau gambar tidak cocok, kembalikan blob asli (cut: null) supaya
+    // halaman tidak hilang dari ZIP.
+    async function maybeCropBanner(blob) {
+      const keep = { blob, cut: null };
+      try {
+        const ready = await ensureBannerEngine();
+        if (!ready) return { ...keep, engineFailed: true };
+        const img = await bannerDecode(blob);
+        const top = bannerCheckRegion(img, 'top');
+        const bottom = bannerCheckRegion(img, 'bottom');
+        if (top.isFull && top.isBanner) return { ...keep, skipped: true };
+        let out = null, cut = null;
+        if (top.isBanner && bottom.isBanner) {
+          if (top.score >= bottom.score) { out = await bannerCrop(img, 'top'); cut = 'top'; }
+          else { out = await bannerCrop(img, 'bottom'); cut = 'bottom'; }
+        } else if (top.isBanner) {
+          out = await bannerCrop(img, 'top'); cut = 'top';
+        } else if (bottom.isBanner) {
+          out = await bannerCrop(img, 'bottom'); cut = 'bottom';
+        } else {
+          return keep;
+        }
+        // toBlob bisa null (encode gagal) — jangan masukkan null ke ZIP.
+        if (!out) return keep;
+        return { blob: out, cut };
+      } catch (_) {
+        return keep;
+      }
+    }
+
+    // ============================================================
+    // EVENT WIRING
+    // ============================================================
+
+    function isValidFetchInput(value) {
+      if (/^\d{6,}$/.test(value)) return true;
+      try {
+        const url = new URL(value);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+      } catch(e) { return false; }
+    }
+
+    function handleFetch() {
+      const value = urlInput.value.trim();
+      if (!value) {
+        urlInput.classList.remove('shake');
+        void urlInput.offsetWidth;
+        urlInput.classList.add('shake');
+        urlInput.placeholder = 'Isi link chapter dulu ya';
+        urlInput.focus();
+        showToast('warning', 'Link chapter masih kosong, isi dulu ya.', 3000);
+        return;
+      }
+
+      if (!isValidFetchInput(value)) {
+        urlInput.classList.remove('shake');
+        void urlInput.offsetWidth;
+        urlInput.classList.add('shake');
+        urlInput.focus();
+        showToast('warning', 'Format URL tidak valid. Gunakan URL yang diawali http:// atau https://.', 3500);
+        return;
+      }
+
+      // Series URL dicek lebih dulu — kalau cocok, buka modal pilih chapter
+      // alih-alih langsung masuk alur fetchChapter() biasa. Kalau tidak
+      // cocok, jatuh ke alur chapter yang sudah ada tanpa perubahan.
+      const seriesMatch = detectSeriesSource(value);
+      if (seriesMatch) {
+        urlInput.value = '';
+        fetchSeries(seriesMatch.source, seriesMatch.comicId, value);
+        return;
+      }
+
+      urlInput.value = '';
+      enqueueFetchChapter(value);
+      // Pindah ke tab Antrean supaya progres fetch terlihat (chip-nya
+      // dirender di sana, bukan di tab ini).
+      switchTab('antrean');
+    }
+
+    fetchBtn.addEventListener('click', handleFetch);
+
+    urlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleFetch();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      // Menaikkan queueGeneration membuat semua guard `currentGeneration !==
+      // queueGeneration` di fetchChapter()/downloadChapter() yang sedang
+      // berjalan langsung berhenti melanjutkan (update chip, simpan ZIP,
+      // dst) — request jaringan yang sudah terlanjur jalan tetap selesai di
+      // background, tapi hasilnya tidak lagi dipakai/ditampilkan.
+      queueGeneration++;
+      metadataQueue = [];
+
+      const hadChips = chapterList.querySelectorAll('.chip-row').length > 0;
+      urlInput.value = '';
+      chapterList.querySelectorAll('.chip-row').forEach(el => el.remove());
+      refreshQueueMeta();
+      urlInput.focus();
+      if (hadChips) showToast('info', 'Antrean dikosongkan.', 2500);
+    });
+  </script>
+
+</div>
+</body>
+</html>
