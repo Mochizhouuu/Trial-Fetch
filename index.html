@@ -524,6 +524,7 @@
   .chip-badge.manwa{ background: var(--blue); }
   .chip-badge.wmanhua{ background: var(--purple); }
   .chip-badge.koudaimh{ background: var(--green); }
+  .chip-badge.rumanhua{ background: var(--pink-deep); }
 
   .chip-status{
     margin-left: auto;
@@ -1456,6 +1457,7 @@
       <button type="button" class="search-chip" data-source="koudaimh">Koudaimh</button>
       <button type="button" class="search-chip" data-source="jjaptoon">Jjaptoon</button>
       <button type="button" class="search-chip" data-source="goodtoon">GoodToon</button>
+      <button type="button" class="search-chip" data-source="rumanhua">Rumanhua</button>
     </div>
     <div class="search-results" id="search-results" style="display:none"></div>
   </div>
@@ -2089,8 +2091,8 @@
     // tetap ada walau halaman dimuat ulang. Tombol 💾 ada di modal series.
     // ============================================================
 
-    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'jjabtoon', 'koudaimh', 'jjaptoon', 'goodtoon'];
-    const SEARCH_SOURCE_NAMES = { baozimh: 'Baozimh', wmanhua: 'Wmanhua', jjabtoon: 'Jjabtoon', koudaimh: 'Koudaimh', jjaptoon: 'Jjaptoon', goodtoon: 'GoodToon' };
+    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'jjabtoon', 'koudaimh', 'jjaptoon', 'goodtoon', 'rumanhua'];
+    const SEARCH_SOURCE_NAMES = { baozimh: 'Baozimh', wmanhua: 'Wmanhua', jjabtoon: 'Jjabtoon', koudaimh: 'Koudaimh', jjaptoon: 'Jjaptoon', goodtoon: 'GoodToon', rumanhua: 'Rumanhua' };
     // State tab ditaruh di sini (awal, sebelum renderSavedSeries() dipanggil
     // saat muat) — bukan di section tab di bawah — supaya tidak kena
     // temporal-dead-zone saat updateTabBadges() berjalan saat startup.
@@ -2101,7 +2103,7 @@
     // section ini dieksekusi lebih dulu saat halaman dimuat, termasuk
     // renderSavedSeries(), jadi tidak boleh menyentuh const yang
     // dideklarasikan belakangan).
-    const SEARCH_BADGE_CLASS = { jjaptoon: 'jjaptoon', jjabtoon: 'jjabtoon', goodtoon: 'goodtoon', baozimh: 'baozimh', manwa: 'manwa', wmanhua: 'wmanhua', koudaimh: 'koudaimh' };
+    const SEARCH_BADGE_CLASS = { jjaptoon: 'jjaptoon', jjabtoon: 'jjabtoon', goodtoon: 'goodtoon', baozimh: 'baozimh', manwa: 'manwa', wmanhua: 'wmanhua', koudaimh: 'koudaimh', rumanhua: 'rumanhua' };
     const SAVED_KEY = 'tf-saved-series';
     const MAX_SEARCH_PER_SOURCE = 10;
 
@@ -2563,6 +2565,15 @@
       return proxy.toString();
     }
 
+    // Gambar chapter Rumanhua yang terenkripsi (source_id==12) tidak bisa
+    // lewat generic proxy — harus didekripsi worker dulu via endpoint khusus.
+    function buildRumanhuaImageUrl(targetUrl) {
+      const proxy = new URL(PROXY_URL);
+      proxy.searchParams.set('action', 'rumanhua-img');
+      proxy.searchParams.set('url', targetUrl);
+      return proxy.toString();
+    }
+
     async function fetchProxyJson(targetUrl, referer = '') {
       const res = await fetch(buildProxyUrl(targetUrl, referer), { cache: 'no-store' });
       const contentType = res.headers.get('content-type') || '';
@@ -2617,6 +2628,9 @@
         // keduanya di sini saja — platform lain tidak pakai subdomain m.
         // jadi baris strip global di atas sengaja tidak diubah.
         if (hostname.replace(/^m\./, '') === 'koudaimh.com') return 'koudaimh';
+        // Rumanhua: chapter /show/{kode}.html (situs kembar Manwang, backend
+        // sama — gambar terenkripsi jsjiami, dibuka worker).
+        if (hostname === 'rumanhua.org' || hostname.endsWith('.rumanhua.org')) return 'rumanhua';
       } catch(e) { return null; }
       return null;
     }
@@ -2682,6 +2696,12 @@
             if (match) return { source: 'koudaimh', comicId: match[1] };
           }
         }
+        if (hostname === 'rumanhua.org' || hostname.endsWith('.rumanhua.org')) {
+          // Series-nya /news/{id} (numerik), chapter-nya /show/{kode}.html —
+          // tidak ada risiko tabrakan.
+          const match = value.match(/rumanhua\.org\/news\/(\d+)/);
+          if (match) return { source: 'rumanhua', comicId: match[1] };
+        }
       } catch(e) { return null; }
       return null;
     }
@@ -2741,7 +2761,7 @@
         // (memastikan ada slug + nomor), bukan untuk reconstruct URL.
         goodtoon: {
           name: 'GoodToon',
-          referer: 'https://www.goodtoon004.com/',
+          referer: 'https://www.goodtoon005.com/',
           // Lihat catatan dynamicReferer di jjaptoon: referer unduhan ikut
           // origin URL tempelan user supaya tahan pindah domain.
           dynamicReferer: true,
@@ -2797,6 +2817,15 @@
             return match ? `${match[1]}/${match[2]}` : null;
           },
           buildUrl: (id, input) => input
+        },
+        rumanhua: {
+          name: 'Rumanhua',
+          referer: 'https://www.rumanhua.org/',
+          extractId: (input) => {
+            const match = input.match(/rumanhua\.org\/show\/([^/?#.]+)/);
+            return match ? match[1] : null;
+          },
+          buildUrl: (id, input) => input
         }
       };
       return configs[source] || null;
@@ -2810,6 +2839,7 @@
       if (source === 'manwa') return (data.images || []).map(img => img.url);
       if (source === 'wmanhua') return (data.images || []).map(img => img.url);
       if (source === 'koudaimh') return (data.images || []).map(img => img.url);
+      if (source === 'rumanhua') return (data.images || []).map(img => img.url);
       return [];
     }
 
@@ -2888,15 +2918,16 @@
       row.classList.toggle('error', !!error);
     }
 
-    function renderThumbs(row, imageUrls) {
+    function renderThumbs(row, imageUrls, proxyFn) {
       const wrap = row.querySelector('.chip-thumbs');
       const shown = imageUrls.slice(0, MAX_THUMBS);
       const remaining = imageUrls.length - shown.length;
+      const buildUrl = typeof proxyFn === 'function' ? proxyFn : buildProxyUrl;
 
       wrap.innerHTML = '';
       for (const url of shown) {
         const img = document.createElement('img');
-        img.src = buildProxyUrl(url);
+        img.src = buildUrl(url);
         img.loading = 'lazy';
         img.alt = '';
         wrap.appendChild(img);
@@ -2987,7 +3018,7 @@
       const chapterTitle = data.chapter_title || '';
       const displayTitle = [comicTitle, chapterTitle].filter(Boolean).join('  ');
 
-      row._chapterData = { source, config, data, images, targetUrl, downloadReferer };
+      row._chapterData = { source, config, data, images, targetUrl, downloadReferer, imageEncrypted: !!data.image_encrypted };
 
       updateChip(row, {
         comicTitle,
@@ -2997,7 +3028,7 @@
         statusClass: 'done',
         percent: 100
       });
-      renderThumbs(row, images);
+      renderThumbs(row, images, row._chapterData.imageEncrypted ? buildRumanhuaImageUrl : undefined);
       showToast('success', `${displayTitle} — ${images.length} halaman siap diunduh.`);
 
       const dlBtn = row.querySelector('.btn-dl-mini');
@@ -3028,6 +3059,9 @@
       // fallback ke config.referer untuk data lama yang tersimpan
       // sebelum field ini ada.
       const downloadReferer = stored.downloadReferer !== undefined ? stored.downloadReferer : config.referer;
+      // Chapter Rumanhua terenkripsi (source_id==12): gambar wajib lewat
+      // endpoint dekripsi worker, bukan generic proxy.
+      const viaRumanhuaDecrypt = source === 'rumanhua' && !!stored.imageEncrypted;
       let data = stored.data;
       let images = stored.images.slice();
       let signedUrlRevision = 0;
@@ -3121,7 +3155,7 @@
               url = images[i];
               const revisionAtAttempt = signedUrlRevision;
               try {
-                const imgProxyUrl = buildProxyUrl(url, downloadReferer);
+                const imgProxyUrl = viaRumanhuaDecrypt ? buildRumanhuaImageUrl(url) : buildProxyUrl(url, downloadReferer);
                 const res = await fetch(imgProxyUrl, { cache: 'no-store' });
                 if (!res.ok) {
                   // Diagnostik lebih detail dari sekadar status code —
