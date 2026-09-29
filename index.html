@@ -2112,9 +2112,11 @@
     // tetap ada walau halaman dimuat ulang. Tombol 💾 ada di modal series.
     // ============================================================
 
-    // 'rumanhua' sengaja TIDAK ada di daftar (lihat komentar chip di atas):
-    // origin memblokir IP Cloudflare dengan 403.
-    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'jjabtoon', 'koudaimh', 'jjaptoon', 'goodtoon', 'manwang'];
+    // 'rumanhua' dan 'manwang' sengaja TIDAK ada di daftar (lihat komentar chip
+    // di atas): keduanya origin memblokir IP egress Cloudflare dengan 403 —
+    // untuk manwang khususnya hanya pada endpoint search (series & chapter
+    // tetap jalan, jadi paste URL langsung masih bisa).
+    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'jjabtoon', 'koudaimh', 'jjaptoon', 'goodtoon'];
     const SEARCH_SOURCE_NAMES = { baozimh: 'Baozimh', wmanhua: 'Wmanhua', jjabtoon: 'Jjabtoon', koudaimh: 'Koudaimh', jjaptoon: 'Jjaptoon', goodtoon: 'GoodToon', rumanhua: 'Rumanhua', manwang: 'Manwang' };
     // State tab ditaruh di sini (awal, sebelum renderSavedSeries() dipanggil
     // saat muat) — bukan di section tab di bawah — supaya tidak kena
