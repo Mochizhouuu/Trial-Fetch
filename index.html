@@ -1464,8 +1464,8 @@
         lain 200 normal. Kode handler + config dipertahankan supaya tinggal
         nyalakan lagi kalau blokirnya dibuka (cukup kembalikan chip +
         entri SEARCH_SOURCES di bawah). -->
-      <!--       <button type="button" class="search-chip" data-source="rumanhua">Rumanhua</button>
-      <button type="button" class="search-chip" data-source="manwang">Manwang</button> -->
+      <!-- <button type="button" class="search-chip" data-source="rumanhua">Rumanhua</button> -->
+      <button type="button" class="search-chip" data-source="manwang">Manwang</button>
     </div>
     <div class="search-results" id="search-results" style="display:none"></div>
   </div>
@@ -1503,6 +1503,7 @@
         <span class="site-chip">Wmanhua</span>
         <span class="site-chip">Koudaimh</span>
         <span class="site-chip">GoodToon</span>
+        <span class="site-chip">Manwang</span>
       </div>
       <button type="button" class="btn-close" id="info-close">Tutup</button>
     </div>
@@ -2021,8 +2022,13 @@
       selected.forEach(ch => { enqueueFetchChapter(ch.url); });
     });
 
-    async function fetchSeries(source, comicId, seriesUrl){
-      const myGeneration = ++seriesLoadGeneration;
+    async function fetchSeries(source, comicId, seriesUrl, isRetry = false){
+      // isRetry=true = percobaan ulang otomatis: JANGAN menaikkan generasi
+      // (panggilan rekursif ++seriesLoadGeneration akan membatalkan dirinya
+      // sendiri). Retry ini ada karena origin tertentu (terbukti Manwang:
+      // 4 sukses dari 5 percobaan) kadang mereset koneksi dari IP
+      // Cloudflare — satu percobaan ulang menaikkan peluang sukses drastis.
+      const myGeneration = isRetry ? seriesLoadGeneration : ++seriesLoadGeneration;
 
       openSeries();
       seriesTitle.textContent = 'Memuat daftar chapter...';
@@ -2071,6 +2077,14 @@
         seriesSave.style.display = chapters.length > 0 ? '' : 'none';
       } catch (err) {
         if (myGeneration !== seriesLoadGeneration) return;
+        // Satu kali percobaan ulang otomatis sebelum menyerah — lihat
+        // catatan di deklarasi fungsi (kegagalan transient origin).
+        if (!isRetry) {
+          seriesTitle.textContent = 'Gagal, mencoba lagi...';
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          if (myGeneration !== seriesLoadGeneration) return;
+          return fetchSeries(source, comicId, seriesUrl, true);
+        }
         seriesTitle.textContent = 'Gagal memuat series';
 
         // err.message bisa berasal dari body mentah worker/upstream (lihat
@@ -2242,24 +2256,35 @@
       renderSearchLoading();
 
       const settled = await Promise.allSettled(sources.map(async (source) => {
-        const res = await fetch(buildSearchUrl(source, query), { cache: 'no-store' });
-        const contentType = res.headers.get('content-type') || '';
-        let data;
-        if (contentType.includes('application/json')) {
-          data = await res.json();
-        } else {
-          const text = await res.text();
-          throw new Error(text.slice(0, 120) || `HTTP ${res.status}`);
+        // Tiap sumber dicoba 2× (jeda 1,2 detik): kegagalan transient
+        // origin (terbukti di Manwang) tidak langsung menggugurkan sumber.
+        let lastErr = null;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const res = await fetch(buildSearchUrl(source, query), { cache: 'no-store' });
+            const contentType = res.headers.get('content-type') || '';
+            let data;
+            if (contentType.includes('application/json')) {
+              data = await res.json();
+            } else {
+              const text = await res.text();
+              throw new Error(text.slice(0, 120) || `HTTP ${res.status}`);
+            }
+            if (!res.ok || data.error) {
+              const extra = data.detail ? ` (${data.detail})` : '';
+              throw new Error((data.error || `HTTP ${res.status}`) + extra);
+            }
+            const results = Array.isArray(data.results) ? data.results : [];
+            // Mode "Semua": batasi per sumber supaya satu sumber yang
+            // hasilnya banyak tidak menenggelamkan sumber lain.
+            return results.slice(0, activeSearchSource === 'all' ? MAX_SEARCH_PER_SOURCE : 30)
+              .map(r => ({ ...r, source: data.source || source }));
+          } catch (err) {
+            lastErr = err;
+            if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1200));
+          }
         }
-        if (!res.ok || data.error) {
-          const extra = data.detail ? ` (${data.detail})` : '';
-          throw new Error((data.error || `HTTP ${res.status}`) + extra);
-        }
-        const results = Array.isArray(data.results) ? data.results : [];
-        // Mode "Semua": batasi per sumber supaya satu sumber yang
-        // hasilnya banyak tidak menenggelamkan sumber lain.
-        return results.slice(0, activeSearchSource === 'all' ? MAX_SEARCH_PER_SOURCE : 30)
-          .map(r => ({ ...r, source: data.source || source }));
+        throw lastErr;
       }));
 
       if (myGeneration !== searchGeneration) return;
