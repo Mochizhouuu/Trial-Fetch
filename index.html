@@ -520,8 +520,7 @@
   .chip-badge.jjaptoon{ background: var(--pink); }
   .chip-badge.jjabtoon{ background: var(--red); }
   .chip-badge.goodtoon{ background: var(--blue-strong); }
-  .chip-badge.baozimh{ background: var(--yellow); }
-  .chip-badge.manwa{ background: var(--blue); }
+   .chip-badge.baozimh{ background: var(--yellow); }
   .chip-badge.wmanhua{ background: var(--purple); }
   .chip-badge.koudaimh{ background: var(--green); }
   .chip-badge.rumanhua{ background: var(--pink-deep); }
@@ -1499,7 +1498,6 @@
         <span class="site-chip">Baozimh</span>
         <span class="site-chip">Jjaptoon</span>
         <span class="site-chip">Jjabtoon</span>
-        <span class="site-chip">Manwa</span>
         <span class="site-chip">Wmanhua</span>
         <span class="site-chip">Koudaimh</span>
         <span class="site-chip">GoodToon</span>
@@ -2657,7 +2655,6 @@
         if (/^goodtoon\d*\.(com|net|top|xyz)$/.test(hostname) && /\/manga\/[^/]+\/(?:chapter-)?\d+\/?(?:[?#]|$)/.test(value)) return 'goodtoon';
         if (hostname === 'twmanga.com' || hostname.endsWith('.twmanga.com') ||
             hostname === 'baozimh.com' || hostname.endsWith('.baozimh.com')) return 'baozimh';
-        if (hostname === 'manwa.me') return 'manwa';
         if (hostname === 'wmanhua.com') return 'wmanhua';
         // koudaimh dipakai lewat subdomain m. (bukan www.), jadi strip
         // keduanya di sini saja — platform lain tidak pakai subdomain m.
@@ -2716,12 +2713,6 @@
         if (/^goodtoon\d*\.(com|net|top|xyz)$/.test(hostname)) {
           const match = value.match(/\/manga\/([^/?#]+)\/?(?:[?#]|$)/);
           if (match) return { source: 'goodtoon', comicId: match[1] };
-        }
-        if (hostname === 'manwa.me') {
-          // Series-nya /book/{id}, beda dari chapter yang /chapter/{id}
-          // (singular) — tidak ada risiko tabrakan.
-          const match = value.match(/manwa\.me\/book\/(\d+)/);
-          if (match) return { source: 'manwa', comicId: match[1] };
         }
         if (hostname.replace(/^m\./, '') === 'koudaimh.com') {
           // Series-nya /manhua/{slug} tanpa segmen nomor chapter + .html di
@@ -2824,18 +2815,6 @@
           },
           buildUrl: (id, input) => input
         },
-        manwa: {
-          name: 'Manwa',
-          referer: 'https://manwa.me/',
-          extractId: (input) => {
-            const match = input.match(/\/chapter\/(\d+)/);
-            return match ? match[1] : null;
-          },
-          buildUrl: (id, input) => {
-            if (input.includes('manwa.me')) return input;
-            return `https://manwa.me/chapter/${id}`;
-          }
-        },
         wmanhua: {
           name: 'Wmanhua',
           referer: 'https://www.wmanhua.com/',
@@ -2888,7 +2867,6 @@
       if (source === 'jjabtoon') return (data.images || []).map(img => img.url);
       if (source === 'goodtoon') return (data.images || []).map(img => img.url);
       if (source === 'baozimh') return (data.images || []).map(img => rewriteBzcdnUrl(img.url));
-      if (source === 'manwa') return (data.images || []).map(img => img.url);
       if (source === 'wmanhua') return (data.images || []).map(img => img.url);
       if (source === 'koudaimh') return (data.images || []).map(img => img.url);
       if (source === 'rumanhua') return (data.images || []).map(img => img.url);
@@ -2909,7 +2887,7 @@
       updateTabBadges();
     }
 
-    const SOURCE_BADGE_CLASS = { jjaptoon: 'jjaptoon', jjabtoon: 'jjabtoon', goodtoon: 'goodtoon', baozimh: 'baozimh', manwa: 'manwa', wmanhua: 'wmanhua', koudaimh: 'koudaimh' };
+    const SOURCE_BADGE_CLASS = { jjaptoon: 'jjaptoon', jjabtoon: 'jjabtoon', goodtoon: 'goodtoon', baozimh: 'baozimh', wmanhua: 'wmanhua', koudaimh: 'koudaimh' };
     const MAX_THUMBS = (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) ? 3 : 8;
 
     function createChip() {
@@ -3023,7 +3001,7 @@
       // Referer untuk unduhan gambar: kalau config bertanda dynamicReferer,
       // pakai origin URL chapter yang ditempel user (selalu domain aktif —
       // tidak perlu update manual saat situs pindah domain). Kalau tidak,
-      // pakai nilai tetap di config (baozimh/manwa/wmanhua stabil, koudaimh
+      // pakai nilai tetap di config (baozimh/wmanhua stabil, koudaimh
       // memang harus kosong karena CDN-nya no-referrer).
       let downloadReferer = config.referer;
       if (config.dynamicReferer) {
