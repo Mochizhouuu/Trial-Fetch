@@ -3036,25 +3036,41 @@
       showToast('info', `Mengambil metadata dari ${config.name}...`, 2500);
 
       let data;
-      try {
-        const res = await fetch(buildProxyUrl(targetUrl), { cache: 'no-store' });
+      // Metadata dicoba 2× (jeda 1,5 detik): origin tertentu terbukti
+      // flaky dari IP Cloudflare (Manwang: 1 sukses dari 3 percobaan
+      // beruntun — 403 intermiten, kemungkinan rate-limit/bot-mitigation).
+      let lastFetchErr = null;
+      for (let metaAttempt = 1; metaAttempt <= 2; metaAttempt++) {
+        try {
+          const res = await fetch(buildProxyUrl(targetUrl), { cache: 'no-store' });
 
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          data = await res.json();
-        } else {
-          const text = await res.text();
-          throw new Error(text || `HTTP ${res.status}`);
-        }
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            data = await res.json();
+          } else {
+            const text = await res.text();
+            throw new Error(text || `HTTP ${res.status}`);
+          }
 
-        if (!res.ok || data.error) {
-          const extra = data.detail ? ` (${data.detail})` : '';
-          throw new Error((data.error || `HTTP ${res.status}`) + extra);
+          if (!res.ok || data.error) {
+            const extra = data.detail ? ` (${data.detail})` : '';
+            throw new Error((data.error || `HTTP ${res.status}`) + extra);
+          }
+          lastFetchErr = null;
+          break;
+        } catch (err) {
+          lastFetchErr = err;
+          if (currentGeneration !== queueGeneration) return;
+          if (metaAttempt < 2) {
+            updateChip(row, { status: 'gagal, mencoba lagi...', statusClass: 'active', percent: 15 });
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
         }
-      } catch (err) {
+      }
+      if (lastFetchErr) {
         if (currentGeneration !== queueGeneration) return;
-        updateChip(row, { status: 'gagal fetch: ' + err.message, statusClass: 'error', error: true, percent: 0 });
-        showToast('error', 'Gagal fetch chapter: ' + err.message);
+        updateChip(row, { status: 'gagal fetch: ' + lastFetchErr.message, statusClass: 'error', error: true, percent: 0 });
+        showToast('error', 'Gagal fetch chapter: ' + lastFetchErr.message);
         return;
       }
 
