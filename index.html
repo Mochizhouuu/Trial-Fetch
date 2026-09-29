@@ -525,6 +525,7 @@
   .chip-badge.wmanhua{ background: var(--purple); }
   .chip-badge.koudaimh{ background: var(--green); }
   .chip-badge.rumanhua{ background: var(--pink-deep); }
+  .chip-badge.manwang{ background: var(--yellow-deep); }
 
   .chip-status{
     margin-left: auto;
@@ -1457,7 +1458,14 @@
       <button type="button" class="search-chip" data-source="koudaimh">Koudaimh</button>
       <button type="button" class="search-chip" data-source="jjaptoon">Jjaptoon</button>
       <button type="button" class="search-chip" data-source="goodtoon">GoodToon</button>
-      <button type="button" class="search-chip" data-source="rumanhua">Rumanhua</button>
+      <!-- Rumanhua DINONAKTIFKAN sementara (chip disembunyikan): origin
+        (192.3.216.80, tanpa CDN) memblokir IP egress Cloudflare Workers
+        dengan 403 — terverifikasi dari worker production, padahal dari IP
+        lain 200 normal. Kode handler + config dipertahankan supaya tinggal
+        nyalakan lagi kalau blokirnya dibuka (cukup kembalikan chip +
+        entri SEARCH_SOURCES di bawah). -->
+      <!--       <button type="button" class="search-chip" data-source="rumanhua">Rumanhua</button>
+      <button type="button" class="search-chip" data-source="manwang">Manwang</button> -->
     </div>
     <div class="search-results" id="search-results" style="display:none"></div>
   </div>
@@ -2091,8 +2099,10 @@
     // tetap ada walau halaman dimuat ulang. Tombol 💾 ada di modal series.
     // ============================================================
 
-    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'jjabtoon', 'koudaimh', 'jjaptoon', 'goodtoon', 'rumanhua'];
-    const SEARCH_SOURCE_NAMES = { baozimh: 'Baozimh', wmanhua: 'Wmanhua', jjabtoon: 'Jjabtoon', koudaimh: 'Koudaimh', jjaptoon: 'Jjaptoon', goodtoon: 'GoodToon', rumanhua: 'Rumanhua' };
+    // 'rumanhua' sengaja TIDAK ada di daftar (lihat komentar chip di atas):
+    // origin memblokir IP Cloudflare dengan 403.
+    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'jjabtoon', 'koudaimh', 'jjaptoon', 'goodtoon', 'manwang'];
+    const SEARCH_SOURCE_NAMES = { baozimh: 'Baozimh', wmanhua: 'Wmanhua', jjabtoon: 'Jjabtoon', koudaimh: 'Koudaimh', jjaptoon: 'Jjaptoon', goodtoon: 'GoodToon', rumanhua: 'Rumanhua', manwang: 'Manwang' };
     // State tab ditaruh di sini (awal, sebelum renderSavedSeries() dipanggil
     // saat muat) — bukan di section tab di bawah — supaya tidak kena
     // temporal-dead-zone saat updateTabBadges() berjalan saat startup.
@@ -2103,7 +2113,7 @@
     // section ini dieksekusi lebih dulu saat halaman dimuat, termasuk
     // renderSavedSeries(), jadi tidak boleh menyentuh const yang
     // dideklarasikan belakangan).
-    const SEARCH_BADGE_CLASS = { jjaptoon: 'jjaptoon', jjabtoon: 'jjabtoon', goodtoon: 'goodtoon', baozimh: 'baozimh', manwa: 'manwa', wmanhua: 'wmanhua', koudaimh: 'koudaimh', rumanhua: 'rumanhua' };
+    const SEARCH_BADGE_CLASS = { jjaptoon: 'jjaptoon', jjabtoon: 'jjabtoon', goodtoon: 'goodtoon', baozimh: 'baozimh', manwa: 'manwa', wmanhua: 'wmanhua', koudaimh: 'koudaimh', rumanhua: 'rumanhua', manwang: 'manwang' };
     const SAVED_KEY = 'tf-saved-series';
     const MAX_SEARCH_PER_SOURCE = 10;
 
@@ -2631,6 +2641,8 @@
         // Rumanhua: chapter /show/{kode}.html (situs kembar Manwang, backend
         // sama — gambar terenkripsi jsjiami, dibuka worker).
         if (hostname === 'rumanhua.org' || hostname.endsWith('.rumanhua.org')) return 'rumanhua';
+        // Manwang: situs kembar Rumanhua — chapter /chapter/{book}-{id}.html.
+        if (hostname === 'manwang.net' || hostname.endsWith('.manwang.net')) return 'manwang';
       } catch(e) { return null; }
       return null;
     }
@@ -2701,6 +2713,12 @@
           // tidak ada risiko tabrakan.
           const match = value.match(/rumanhua\.org\/news\/(\d+)/);
           if (match) return { source: 'rumanhua', comicId: match[1] };
+        }
+        if (hostname === 'manwang.net' || hostname.endsWith('.manwang.net')) {
+          // Series-nya /book/{id} (numerik), chapter-nya
+          // /chapter/{book}-{id}.html — tidak ada risiko tabrakan.
+          const match = value.match(/manwang\.net\/book\/(\d+)/);
+          if (match) return { source: 'manwang', comicId: match[1] };
         }
       } catch(e) { return null; }
       return null;
@@ -2826,6 +2844,15 @@
             return match ? match[1] : null;
           },
           buildUrl: (id, input) => input
+        },
+        manwang: {
+          name: 'Manwang',
+          referer: 'https://manwang.net/',
+          extractId: (input) => {
+            const match = input.match(/manwang\.net\/chapter\/(\d+)-(\d+)\/?(?:[?#]|$)/);
+            return match ? `${match[1]}-${match[2]}` : null;
+          },
+          buildUrl: (id, input) => input
         }
       };
       return configs[source] || null;
@@ -2840,6 +2867,7 @@
       if (source === 'wmanhua') return (data.images || []).map(img => img.url);
       if (source === 'koudaimh') return (data.images || []).map(img => img.url);
       if (source === 'rumanhua') return (data.images || []).map(img => img.url);
+      if (source === 'manwang') return (data.images || []).map(img => img.url);
       return [];
     }
 
