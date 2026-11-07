@@ -1,0 +1,29 @@
+# Trial Fetch Worker — Cloudflare Workers (backend proxy komik)
+# Dipakai oleh Cloudflare Pages lewat Service Binding (Pages > Settings >
+# Bindings > Service binding, Variable name: TRIAL_FETCH_WORKER, Service:
+# trial-fetch-worker).
+#
+# Worker ini TIDAK punya URL publik (workers_dev = false, preview_urls = false) —
+# hanya bisa dipanggil lewat Service Binding dari Pages Functions (functions/).
+#
+# Setelah deploy: Settings > Variables and Secrets -> Add
+#   BAOZI_APP_ID / BAOZI_DEVICE_CODE / BAOZI_DEVICE_ID / BAOZI_USER_AGENT /
+#   BAOZI_APP_VERSION -> TIDAK perlu diset di sini. Nilai default sudah
+#   ditulis langsung di worker (BAOZI_DEFAULTS) dan boleh diubah dengan
+#   mengedit worker/trial-fetch-worker.js.
+#
+# JANGAN taruh API key di file ini. Key hanya lewat Secret di dashboard
+# (tidak dipakai oleh worker ini sekarang — semuanya hardcoded/default).
+
+name = "trial-fetch-worker"
+main = "trial-fetch-worker.js"
+compatibility_date = "2024-01-01"
+workers_dev = false   # tanpa URL *.workers.dev, hanya bisa dipanggil lewat Service Binding
+preview_urls = false  # matikan URL preview juga
+
+# Worker ini hanya memakai API web standar (fetch, Headers, Response,
+# AbortController, TextEncoder/Decoder, crypto.subtle) sehingga tidak butuh
+# flag compatibility tambahan.
+
+[observability]
+enabled = true
