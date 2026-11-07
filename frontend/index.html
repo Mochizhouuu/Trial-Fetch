@@ -1533,7 +1533,11 @@
   <footer>Mochizhouuu © 2026</footer>
 
   <script>
-    const PROXY_URL = '/proxy';
+    // HARUS absolut (bukan '/proxy' mentah): buildProxyUrl/buildSearchUrl/
+    // buildRumanhuaImageUrl memakai `new URL(PROXY_URL)` yang melempar
+    // "Invalid URL" kalau diberi string relatif tanpa base — itulah sebabnya
+    // search & paste URL series terlihat "invalid" walau backend normal.
+    const PROXY_URL = `${location.origin}/proxy`;
 
     // Domain default untuk sumber yang nomor domainnya suka berganti.
     // URL lengkap tempelan user SELALU dipakai apa adanya (tidak perlu update
