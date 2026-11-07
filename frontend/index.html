@@ -1440,10 +1440,12 @@
       <button type="button" class="search-chip active" data-source="all">Semua</button>
       <button type="button" class="search-chip" data-source="baozimh">Baozimh</button>
       <button type="button" class="search-chip" data-source="wmanhua">Wmanhua</button>
-      <button type="button" class="search-chip" data-source="jjabtoon">Jjabtoon</button>
       <button type="button" class="search-chip" data-source="koudaimh">Koudaimh</button>
       <button type="button" class="search-chip" data-source="jjaptoon">Jjaptoon</button>
       <button type="button" class="search-chip" data-source="goodtoon">GoodToon</button>
+      <!-- Jjabtoon DINONAKTIFKAN: situs mati beberapa minggu terakhir (Nov 2026),
+           endpoint pencarian/seri tidak bisa diandalkan lagi. Tetap bisa
+           dipakai lewat "paste URL" di tab Ambil selama domain masih hidup. -->
       <!-- Rumanhua DINONAKTIFKAN sementara (chip disembunyikan): origin
         (192.3.216.80, tanpa CDN) memblokir IP egress Cloudflare Workers
         dengan 403 — terverifikasi dari worker production, padahal dari IP
@@ -1485,7 +1487,7 @@
       <div class="site-chips">
         <span class="site-chip">Baozimh</span>
         <span class="site-chip">Jjaptoon</span>
-        <span class="site-chip">Jjabtoon</span>
+        <span class="site-chip" title="Mati — hanya bisa dipakai lewat paste URL">Jjabtoon</span>
         <span class="site-chip">Wmanhua</span>
         <span class="site-chip">Koudaimh</span>
         <span class="site-chip">GoodToon</span>
@@ -2100,7 +2102,10 @@
     // di atas): keduanya origin memblokir IP egress Cloudflare dengan 403 —
     // untuk manwang khususnya hanya pada endpoint search (series & chapter
     // tetap jalan, jadi paste URL langsung masih bisa).
-    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'jjabtoon', 'koudaimh', 'jjaptoon', 'goodtoon'];
+    // Jjabtoon sengaja TIDAK ada di daftar: situsnya mati beberapa minggu
+    // terakhir (Nov 2026), endpoint pencarian tidak bisa diandalkan lagi.
+    // Alur "paste URL" di tab Ambil tetap tersedia selama domain hidup.
+    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'koudaimh', 'jjaptoon', 'goodtoon'];
     const SEARCH_SOURCE_NAMES = { baozimh: 'Baozimh', wmanhua: 'Wmanhua', jjabtoon: 'Jjabtoon', koudaimh: 'Koudaimh', jjaptoon: 'Jjaptoon', goodtoon: 'GoodToon', rumanhua: 'Rumanhua', manwang: 'Manwang' };
     // State tab ditaruh di sini (awal, sebelum renderSavedSeries() dipanggil
     // saat muat) — bukan di section tab di bawah — supaya tidak kena
@@ -2995,6 +3000,12 @@
         try {
           downloadReferer = new URL(targetUrl).origin + '/';
         } catch (e) { /* biarkan nilai config sebagai fallback */ }
+      }
+      // Rumanhua (Nov 2026): gambar chapter di CDN numerik (dmw.546457.xyz dsb)
+      // menolak request tanpa Referer halaman chapter. Selalu pakai URL chapter
+      // lengkap sebagai referer, bukan origin + "/" — CDN memvalidasi path juga.
+      if (source === 'rumanhua') {
+        downloadReferer = targetUrl;
       }
 
       updateChip(row, { comicTitle: config.name, source: config.name, status: 'fetching', statusClass: 'active', percent: 15 });

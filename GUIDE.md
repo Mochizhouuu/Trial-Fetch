@@ -49,7 +49,7 @@ semua fitur.
 
 Endpoint: `/proxy?action=search&source={source}&q={query}`.
 
-Sumber yang aktif: `baozimh`, `wmanhua`, `jjabtoon`, `koudaimh`, `jjaptoon`, `goodtoon`,
+Sumber yang aktif: `baozimh`, `wmanhua`, `koudaimh`, `jjaptoon`, `goodtoon`,
 `rumanhua`. Manwang sengaja tidak disediakan.
 
 ### 5.2 Crop banner (OpenCV)

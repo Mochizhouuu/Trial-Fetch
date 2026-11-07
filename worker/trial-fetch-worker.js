@@ -16,7 +16,14 @@
 // (diverifikasi 94/94 gambar chapter dari sana) — prefix img. WAJIB diterima,
 // kalau tidak unduhan gambar chapter diblokir allowlist dengan 403 padahal
 // metadata-nya berhasil.
-const JJAPTOON_HOST_RE = /^((www|img)\.)?jjaptoon\d*\.(com|net|vip|xyz|top|me)$/;
+//
+// UPDATE Nov 2026: CDN gambar pindah ke r2img.jjaptoon008.com (path
+// /r2/watermarked/...) yang dilindungi Cloudflare Bot Management —
+// request dari IP datacenter (termasuk Worker) dibalas 403 challenge.
+// Regex diubah menerima subdomain apa pun (r2img., img., www., dst) supaya
+// allowlist tidak jadi penghambat; kalau challenge tetap memblokir egress
+// Worker, satu-satunya jalan adalah proxy browser-side atau ganti CDN lagi.
+const JJAPTOON_HOST_RE = /^(?:[\w-]+\.)*jjaptoon\d*\.(com|net|vip|xyz|top|me)$/;
 
 // KOREKSI 2 September 2026: sempat salah diasumsikan "jjaptoon berganti
 // nama total jadi jjabtoon" — TERNYATA SALAH. jjaptoon sempat error/down
@@ -79,6 +86,12 @@ const ALLOWED_HOST_SUFFIXES = [
   "rumanhua.org",
   "ecombdimg.com",
   "baipiaoguai.org",
+  // CDN Rumanhua (Nov 2026): gambar chapter di-host di domain numerik .xyz
+  // (dmw.546457.xyz terverifikasi hidup saat ini). Domain numerik ini bisa
+  // berubah mengikuti rotasi CDN, jadi izinkan pola apa pun berakhiran
+  // .xyz di sini. Jika CDN pindah ke TLD lain, update suffix-nya di sini
+  // dan di RUMANHUA_CDN_HOST_RE di bawah.
+  "546457.xyz",
   // Manwang (situs kembar Rumanhua: ID komik sama, alur params terenkripsi
   // sama, kunci SAMA persis — terverifikasi dekripsi cocok). Halaman di
   // manwang.net, cover di ecombdimg.com (sudah di atas).
@@ -325,7 +338,7 @@ async function handleSearch(request, reqUrl) {
     if (source === "manwang") return await searchManwang(request, query);
     return jsonResponse(request, {
       error: "Sumber pencarian tidak didukung",
-      detail: "Pilih salah satu: baozimh, wmanhua, jjabtoon, koudaimh, jjaptoon, goodtoon, rumanhua, manwang."
+      detail: "Pilih salah satu: baozimh, wmanhua, koudaimh, jjaptoon, goodtoon, rumanhua, manwang."
     }, 400);
   } catch (err) {
     return jsonResponse(request, { error: `${source || "search"} search failed`, detail: err.message }, 502);
@@ -468,47 +481,23 @@ async function searchJjabtoon(request, reqUrl, query) {
 // 1 diberi satu kali retry sebelum menyerah. Cover di img.koudaimh.com sudah
 // tercakup allowlist (subdomain koudaimh.com).
 async function searchKoudaimh(request, query) {
-  const UA = "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36";
-
-  async function fetchLanding() {
-    const headers = new Headers();
-    headers.set("User-Agent", UA);
-    headers.set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-    headers.set("Referer", "https://m.koudaimh.com/");
-    const res = await safeFetch("https://m.koudaimh.com/search", { method: "GET", headers });
-    if (!res.ok) throw new Error(`HTTP ${res.status} pada halaman pencarian`);
-    return res.text();
-  }
-
-  let landing;
-  try {
-    landing = await fetchLanding();
-  } catch (firstErr) {
-    // Retry sekali — origin Koudaimh sesekali 502 sepersekian detik.
-    try {
-      landing = await fetchLanding();
-    } catch {
-      throw firstErr;
-    }
-  }
-
-  const tokenMatch = landing.match(/name="__searchtoken__" value="([^"]+)"/);
-  if (!tokenMatch) {
-    throw new Error("Token pencarian tidak ditemukan (struktur halaman berubah?)");
-  }
-
+  // Per Sep 2026 situs Koudaimh sudah tidak lagi memakai
+  // __searchtoken__ anti-CSRF di form-nya — sekarang cukup GET
+  // /search?q={kata} (tanpa token) dan hasilnya berupa daftar
+  // <li><a href="/manhua/{slug}" title="..." class="block ..."><div>...</div><img src="cover">
   const headers = new Headers();
-  headers.set("User-Agent", UA);
+  headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
   headers.set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-  headers.set("Referer", "https://m.koudaimh.com/search");
+  headers.set("Referer", "https://m.koudaimh.com/");
 
-  const url = "https://m.koudaimh.com/search?q=" + encodeURIComponent(query) +
-    "&__searchtoken__=" + encodeURIComponent(tokenMatch[1]);
+  const url = "https://m.koudaimh.com/search?q=" + encodeURIComponent(query);
   const res = await safeFetch(url, { method: "GET", headers });
   if (!res.ok) throw new Error(`HTTP ${res.status} pada hasil pencarian`);
   const html = await res.text();
 
-  const re = /<a href="\/manhua\/([^"?#\/]+)\/?"[^>]*title="([^"]+)"[^>]*class="block[\s\S]*?<img[^>]*src="([^"]+)"/gi;
+  // Pola hasil: <a href="/manhua/{slug}" title="{judul}" ...>
+  //              <div ...><img src="{cover}" alt="{judul}">
+  const re = /<a[^>]*href="\/manhua\/([^"?#\/]+)"[^>]*title="([^"]+)"[\s\S]*?<img[^>]*\bsrc="([^"]+)"/gi;
   const seen = new Set();
   const results = [];
   let m;
@@ -1744,14 +1733,42 @@ export default {
         if (!pageRes.ok) throw new Error(`HTTP ${pageRes.status}`);
         const html = await pageRes.text();
 
-        const numMatch = html.match(/var\s+num\s*=\s*eval\(\s*["'](\d+)["']\s*\)/);
-        const pasdMatch = html.match(/var\s+pasd\s*=\s*["']([^"']+)["']/);
+        // Pola lama: `var num = eval("5")` + `var pasd = "https://..."`.
+        // Pola baru (Nov 2026): `var totalPages = parseInt('5')` +
+        // `var imgBaseUrl = 'https://image4.wmanhua.com/mh/{uuid}/' + ('{ch}' || '{ch}') + '/';`
+        const numMatch =
+          html.match(/var\s+num\s*=\s*eval\(\s*["'](\d+)["']\s*\)/) ||
+          html.match(/var\s+totalPages\s*=\s*parseInt\(\s*["'](\d+)["']\s*\)/);
+        let pasdMatch =
+          html.match(/var\s+pasd\s*=\s*["']([^"']+)["']/);
+        // Pola baru (Nov 2026): imgBaseUrl di-define lewat
+        //   var imgBaseUrl = 'https://image4.wmanhua.com/mh/{uuid}/' + ('{uuid}' || '{judul}') + '/';
+        // regex pasd di atas tidak cocok; fallback: ambil URL https:// pertama
+        // di baris imgBaseUrl (sudah termasuk sub-folder {uuid}, diakhiri '/').
+        if (!pasdMatch) {
+          // Pola baru (Nov 2026): baris imgBaseUrl dipecah jadi dua —
+          //   var imgBaseUrl = 'https://image4.wmanhua.com/mh/{uuid}/' + ('{uuid}' || '{judul}') + '/';
+          // URL ASLI = prefix (dari string pertama, tanpa uuid sub-folder)
+          //           + segmen UUID dari `('{uuid}' || ...)` + '/'
+          // jadi base efektif-nya: `https://image4.wmanhua.com/mh/{uuid}/{uuid}/`
+          const imgBaseLine = html.match(/var\s+imgBaseUrl\s*=\s*[^;]+/);
+          if (imgBaseLine) {
+            const prefixMatch = imgBaseLine[0].match(/https?:\/\/[^\s'"]+/);
+            const uuidMatch   = imgBaseLine[0].match(/\(\s*['"]([a-f0-9-]+)['"]/i);
+            if (prefixMatch) {
+              let b = prefixMatch[0];
+              if (uuidMatch) b += uuidMatch[1] + '/';
+              if (!b.endsWith('/')) b += '/';
+              pasdMatch = [null, b];
+            }
+          }
+        }
 
         if (!numMatch || !pasdMatch) {
           return new Response(
             JSON.stringify({
               error: "No comic images found in wmanhua chapter page",
-              note: "Expected `var num = eval(\"...\")` and `var pasd = \"...\"` in the page script. The site may have changed its markup.",
+              note: "Expected `var num/totalPages` and `var pasd/imgBaseUrl` in the page script. The site may have changed its markup.",
               debug: { comicId, chapterId }
             }),
             { status: 404, headers: { ...corsHeaders(request), "Content-Type": "application/json" }}
@@ -1760,6 +1777,9 @@ export default {
 
         const pageCount = parseInt(numMatch[1], 10);
         let baseUrl = pasdMatch[1];
+        // Pola baru: imgBaseUrl di-set ke `base + ('{judul}' || '{judul}') + '/'` di
+        // dalam string template JS; worker cuma membaca string-nya (belum
+        // dieval), jadi perlu pastikan diakhiri slash.
         if (!baseUrl.endsWith("/")) baseUrl += "/";
 
         if (!Number.isFinite(pageCount) || pageCount <= 0) {
@@ -1787,6 +1807,11 @@ export default {
           chapterTitle = firstPart;
         }
 
+        // Pola baru (Nov 2026): imgBaseUrl di-set ke
+        //   `https://image4.wmanhua.com/mh/{uuid}/` + `('{uuid}' || '{judul}') + '/'`
+        // Loop JS menggunakan `imgBaseUrl` yang sudah termasuk sub-folder {uuid},
+        // jadi URL gambar yang benar adalah `{baseUrl}{n}.webp` (pola lama
+        // tetap berlaku — baseUrl sudah diakhiri `/{uuid}/`).
         const comicImages = Array.from({ length: pageCount }, (_, i) => ({
           page: i + 1,
           url: `${baseUrl}${i + 1}.webp`
@@ -1927,8 +1952,19 @@ export default {
 
         let data;
         try {
-          const base64 = paramsMatch[1]
-            .replace(/\s+/g, "")
+          // Per Nov 2026, blob `params` menyimpan `\/` (slash) dan
+          // `\uXXXX` escape sebelum base64 — ururannya sudah benar:
+          //   1. \/ -> /
+          //   2. decode \uXXXX jadi karakter aslinya
+          // Barulah setelah itu base64-nya valid (char +, /, =).
+          // Sebelumnnya hanya base64url (-/_ -> +/ ), jadi string
+          // "terburuk" seperti di atas gagal di `atob` dengan
+          // "Invalid character".
+          const rawParams = paramsMatch[1]
+            .replace(/\\\//g, "/")
+            .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+            .replace(/\s+/g, "");
+          const base64 = rawParams
             .replace(/-/g, "+")
             .replace(/_/g, "/");
           const paddedBase64 = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
@@ -2188,6 +2224,12 @@ export default {
         }
 
         const imageEncrypted = String(data.source_id || "") === "12";
+        // Per Nov 2026, gambar Rumanhua chapter umumnya di-host di CDN numerik
+        // (mis. dmw.546457.xyz) yang menolak request tanpa Referer dari
+        // rumanhua.org. Selalu kirim refererChapter (URL halaman chapter ini)
+        // — frontend sudah tahu cara meneruskan `referer` ke proxy generik
+        // lewat parameter ?referer=.
+        const refererChapter = targetUrl.toString();
 
         return new Response(JSON.stringify({
           source: "rumanhua",
@@ -2198,6 +2240,7 @@ export default {
           chapter_title: chapterTitle,
           page_title: pageTitle,
           image_encrypted: imageEncrypted,
+          referer: refererChapter,
           total_images: comicImages.length,
           images: comicImages
         }, null, 2), { status: 200, headers: { ...corsHeaders(request), "Content-Type": "application/json" }});
@@ -2556,6 +2599,11 @@ export default {
     // pola URL, karena banyak CDN manga tidak selalu punya ekstensi jelas
     // di path-nya.
     const isShimolife = targetUrl.hostname === "shimolife.com" || targetUrl.hostname.endsWith(".shimolife.com");
+    // CDN Rumanhua / Manwang (Nov 2026): host numerik .xyz (mis. dmw.546457.xyz).
+    // Pola: {subdomain}.{nomor}.xyz — tidak butuh referer, tapi kalau 403
+    // coba fallback dengan referer https://www.rumanhua.org/.
+    const isNumeralCdn = /^\d+\.\d+\.xyz$/i.test(targetUrl.hostname) ||
+                         targetUrl.hostname.match(/\d+\.\d+\.xyz$/i);
 
     const headers = new Headers();
     // Koudaimh memuat gambar chapter-nya dengan referrerpolicy="no-referrer"
@@ -2586,13 +2634,14 @@ export default {
     try {
       let response = await safeFetch(targetUrl.toString(), { method: "GET", headers });
 
-      // CDN Koudaimh tidak selalu konsisten soal hotlink policy. Coba
-      // permintaan tanpa referer terlebih dahulu (sesuai referrerpolicy asli),
-      // lalu satu fallback dengan referer halaman jika CDN membalas 401/403/429.
-      // Keduanya tetap dibatasi host allowlist dan timeout safeFetch.
-      if (!response.ok && isKoudaimhCdn && [401, 403, 429].includes(response.status)) {
+      // CDN Koudaimh / Rumanhua tidak selalu konsisten soal hotlink policy.
+      // Coba permintaan tanpa referer terlebih dahulu (sesuai referrerpolicy
+      // asli), lalu satu fallback dengan referer halaman jika CDN membalas
+      // 401/403/429. Keduanya tetap dibatasi host allowlist dan timeout safeFetch.
+      if (!response.ok && (isKoudaimhCdn || isNumeralCdn) && [401, 403, 429].includes(response.status)) {
         if (response.body) { try { await response.body.cancel(); } catch {} }
-        headers.set("Referer", "https://m.koudaimh.com/");
+        const fallbackRef = isKoudaimhCdn ? "https://m.koudaimh.com/" : "https://www.rumanhua.org/";
+        headers.set("Referer", fallbackRef);
         response = await safeFetch(targetUrl.toString(), { method: "GET", headers });
       }
 

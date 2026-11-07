@@ -1,7 +1,7 @@
 # Trial Fetch — Cloudflare Pages + Worker (Service Binding)
 
 Aplikasi web **Trial Fetch**: unduh chapter komik dari berbagai source (Baozimh, Wmanhua,
-Jjabtoon, Koudaimh, Jjaptoon, Goodtoon, dst.) lewat Cloudflare Worker proxy, yang mana
+Jjabtoon (situs mati, hanya paste URL), Koudaimh, Jjaptoon, Goodtoon, dst.) lewat Cloudflare Worker proxy, yang mana
 frontend-nya di-deploy di **Cloudflare Pages** dan Worker-nya dihubungkan lewat
 **Service Binding** — pola yang sama seperti OCR Studio.
 
@@ -62,7 +62,7 @@ trial-fetch/
 - **Rate limit**: 500 request/IP/5 menit (in-memory di Worker).
 - **Anti open proxy**: Worker hanya menerima host dari allowlist platform komik
   (lihat `ALLOWED_HOST_SUFFIXES` di `worker/trial-fetch-worker.js`).
-- **Sumber pencarian**: Baozimh, Wmanhua, Jjabtoon, Koudaimh, Jjaptoon, Goodtoon, Rumanhua
+- **Sumber pencarian aktif**: Baozimh, Wmanhua, Koudaimh, Jjaptoon, Goodtoon, Rumanhua. Jjabtoon & Manwang diblokir origin (Jjabtoon mati sejak Nov 2026, Manwang 403 permanen) — tetap bisa dipakai lewat "paste URL" di tab Ambil selama domain masih hidup.
   (endpoint `?action=search`). Manwang sengaja tidak disediakan (diblokir origin).
 - **Baozimh**: header app (`app-id`, `device-code`, dll) dari `BAOZI_DEFAULTS` di worker
   (bisa dioverride lewat env `BAOZI_*`).
