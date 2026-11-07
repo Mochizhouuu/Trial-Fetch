@@ -412,7 +412,8 @@ async function searchWmanhua(request, query) {
   if (!res.ok) throw new Error(`HTTP ${res.status} pada halaman pencarian`);
   const html = await res.text();
 
-  const re = /<a href="(\/comic\/\d+\.html)">[\s\S]*?data-src="([^"]+)"[\s\S]*?alt="([^"]+)"/gi;
+  const re = /<a\s+class="book"\s+href="(\/comic\/\d+\.html)"[\s\S]*?aria-label="([^"]+)"[\s\S]*?background-image:url\(['"]([^'"]+)['"]\)/gi;
+  const reFallback = /<a\s+class="book"\s+href="(\/comic\/\d+\.html)"[\s\S]*?<h3>([^<]+)<\/h3>/gi;
   const seen = new Set();
   const results = [];
   let m;
@@ -421,12 +422,27 @@ async function searchWmanhua(request, query) {
     if (seen.has(path)) continue;
     seen.add(path);
     results.push({
-      title: m[3].trim(),
+      title: m[2].trim(),
       url: `https://www.wmanhua.com${path}`,
-      cover: m[2].trim(),
+      cover: m[3].trim(),
       author: ""
     });
     if (results.length >= 30) break;
+  }
+  // Fallback: markup tanpa thumb/cover (cuma link + judul <h3>)
+  if (results.length === 0) {
+    while ((m = reFallback.exec(html)) !== null) {
+      const path = m[1];
+      if (seen.has(path)) continue;
+      seen.add(path);
+      results.push({
+        title: m[2].trim(),
+        url: `https://www.wmanhua.com${path}`,
+        cover: "",
+        author: ""
+      });
+      if (results.length >= 30) break;
+    }
   }
 
   return jsonResponse(request, { source: "wmanhua", query, total: results.length, results });
