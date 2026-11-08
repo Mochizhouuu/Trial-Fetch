@@ -75,11 +75,13 @@ const ALLOWED_HOST_SUFFIXES = [
    // appgb3.baozimh.com.
    "bzmgapp.com",
    "wmanhua.com",
-  "koudaimh.com",
-  // CDN gambar Koudaimh dapat memakai host terpisah dari halaman chapter.
-  // Host ini tetap dibatasi suffix-nya; jangan mengubah proxy menjadi open proxy.
-  "koudaimg.com",
-  "shimolife.com",
+  // HipMH (m.hipmh.com / reader.hipmh.top) — pengganti Koudaimh (Nov 2026).
+  // Semua data lewat API JSON hipapi1.s3file.top; gambar di hip-tx-*.s3imgs.top
+  // (tanpa Referer), cover di cover.s3imgs.top.
+  "hipmh.com",
+  "s3file.top",
+  "s3imgs.top",
+  "reader.hipmh.top",
   // Rumanhua (situs kembar Manwang, backend sama): halaman di rumanhua.org,
   // cover di ecombdimg.com, mirror cadangan img1.baipiaoguai.org. Gambar
   // chapter umumnya di shimolife bertanda tangan (sudah di atas).
@@ -331,14 +333,21 @@ async function handleSearch(request, reqUrl) {
     if (source === "baozimh") return await searchBaozimh(request, query);
     if (source === "wmanhua") return await searchWmanhua(request, query);
     if (source === "jjabtoon") return await searchJjabtoon(request, reqUrl, query);
-    if (source === "koudaimh") return await searchKoudaimh(request, query);
-    if (source === "jjaptoon") return await searchJjaptoon(request, reqUrl, query);
+    if (source === "hipmh") return await searchHipmh(request, query);
     if (source === "goodtoon") return await searchGoodtoon(request, reqUrl, query);
     if (source === "rumanhua") return await searchRumanhua(request, query);
     if (source === "manwang") return await searchManwang(request, query);
+    // sumber lama yang sudah dihapus/dinonaktifkan — balasan rapi, bukan crash
+    if (source === "jjabtoon" || source === "jjaptoon" || source === "koudaimh") {
+      return jsonResponse(request, {
+        error: "Sumber sudah tidak didukung lagi",
+        detail: "Jjabtoon/Jjaptoon/Koudaimh dihapus dari Trial Fetch (Nov 2026); pakai HipMH.",
+        source, total: 0, results: []
+      }, 410);
+    }
     return jsonResponse(request, {
       error: "Sumber pencarian tidak didukung",
-      detail: "Pilih salah satu: baozimh, wmanhua, koudaimh, jjaptoon, goodtoon, rumanhua, manwang."
+      detail: "Pilih salah satu: baozimh, wmanhua, hipmh, goodtoon, rumanhua, manwang."
     }, 400);
   } catch (err) {
     return jsonResponse(request, { error: `${source || "search"} search failed`, detail: err.message }, 502);
@@ -486,51 +495,288 @@ async function searchJjabtoon(request, reqUrl, query) {
   return jsonResponse(request, { source: "jjabtoon", query, total: results.length, results });
 }
 
-// Koudaimh: pencarian butuh 2 langkah karena form-nya menyertakan token
-// anti-CSRF (__searchtoken__) yang berbeda tiap pemuatan halaman
-// (terverifikasi: token saja cukup, tidak perlu cookie sesi):
-//   1. GET m.koudaimh.com/search → ambil token dari input hidden;
-//   2. GET m.koudaimh.com/search?q={kata}&__searchtoken__={token} → hasil:
-//      <a href="/manhua/{slug}" title="{judul}" class="block ...">
-//      ...<img src="{cover}">
-// Origin ini kadang membalas 502 sesaat (teramati dari probe), jadi langkah
-// 1 diberi satu kali retry sebelum menyerah. Cover di img.koudaimh.com sudah
-// tercakup allowlist (subdomain koudaimh.com).
-async function searchKoudaimh(request, query) {
-  // Per Sep 2026 situs Koudaimh sudah tidak lagi memakai
-  // __searchtoken__ anti-CSRF di form-nya — sekarang cukup GET
-  // /search?q={kata} (tanpa token) dan hasilnya berupa daftar
-  // <li><a href="/manhua/{slug}" title="..." class="block ..."><div>...</div><img src="cover">
+// HipMH (m.hipmh.com) — 嬉皮漫畫, pengganti Koudaimh (Nov 2026).
+// Halaman HTML situs MENOLAK client non-browser (body 0 byte), jadi semua
+// data diambil lewat API JSON internal SPA: https://hipapi1.s3file.top
+// (persis pendekatan ekstensi Mihon "XiPi Manhua", terverifikasi di app
+// TrialFetch Android — lihat HipmhSource.kt):
+//   - Search:   GET /v1/search?q=&page=&page_size=
+//   - Series:   GET /v1/manga?mid={mid}
+//   - Chapters: GET /v1/manga/chapters?mid={mid}&page=&per_page=50&order=desc
+//   - Pages:    GET /v2/chapter?hid={api-hid} -> `images` ter-encode (marker
+//     qM9/Vx/pL0/Z7 + alfabet reader + chunk ganjil dibalik) + 1 entri decoy.
+//   - Gambar:   https://hip-tx-1.s3imgs.top{path} (line 9 -> hip-tx-s1),
+//     boleh tanpa Referer.
+// mid = base64url("m:<id>"), selalu segmen pertama slug series.
+const HIPMH_BASE = "https://m.hipmh.com";
+const HIPMH_API = "https://hipapi1.s3file.top";
+const HIPMH_READER = "https://reader.hipmh.top";
+const HIPMH_IMG_BASE = "https://hip-tx-1.s3imgs.top";
+const HIPMH_IMG_BASE_S1 = "https://hip-tx-s1.s3imgs.top";
+const HIPMH_COVER_BASE = "https://cover.s3imgs.top";
+// Alfabet encode/decode reader HipMH (dari HipmhSource.kt, terverifikasi
+// menghasilkan path gambar yang benar).
+const HIPMH_ENC_ALPHABET = "_-9876543210abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const HIPMH_DEC_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+async function hipmhApiGet(path) {
   const headers = new Headers();
-  headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
-  headers.set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-  headers.set("Referer", "https://m.koudaimh.com/");
+  headers.set("User-Agent", "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36");
+  headers.set("Accept", "application/json, text/plain, */*");
+  headers.set("X-Requested-With", "XMLHttpRequest");
+  headers.set("Referer", HIPMH_BASE);
+  const res = await safeFetch(HIPMH_API + path, { method: "GET", headers });
+  if (!res.ok) throw new Error(`HTTP ${res.status} pada API HipMH ${path}`);
+  let json;
+  try { json = await res.json(); }
+  catch (e) { throw new Error("API HipMH membalas bukan JSON: " + e.message); }
+  if (!json || !json.data) throw new Error("API HipMH tidak mengembalikan data (" + (json && json.message || "no field") + ")");
+  return json.data;
+}
 
-  const url = "https://m.koudaimh.com/search?q=" + encodeURIComponent(query);
-  const res = await safeFetch(url, { method: "GET", headers });
-  if (!res.ok) throw new Error(`HTTP ${res.status} pada hasil pencarian`);
-  const html = await res.text();
-
-  // Pola hasil: <a href="/manhua/{slug}" title="{judul}" ...>
-  //              <div ...><img src="{cover}" alt="{judul}">
-  const re = /<a[^>]*href="\/manhua\/([^"?#\/]+)"[^>]*title="([^"]+)"[\s\S]*?<img[^>]*\bsrc="([^"]+)"/gi;
+async function searchHipmh(request, query) {
+  const d = await hipmhApiGet(`/v1/search?q=${encodeURIComponent(query)}&page=1&page_size=30`);
+  const rows = Array.isArray(d.data) ? d.data : [];
   const seen = new Set();
   const results = [];
-  let m;
-  while ((m = re.exec(html)) !== null) {
-    const slug = m[1].trim();
-    if (!slug || seen.has(slug)) continue;
-    seen.add(slug);
+  for (const el of rows) {
+    const o = el && typeof el === "object" ? el : {};
+    const id = String(o.id || "").trim();
+    const title = String(o.title || "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
     results.push({
-      title: m[2].trim(),
-      url: `https://m.koudaimh.com/manhua/${slug}`,
-      cover: m[3].replace(/&amp;/g, "&"),
+      title: title || id,
+      url: `${HIPMH_BASE}/series/${id}`,
+      cover: o.vertical_image_url ? HIPMH_COVER_BASE + o.vertical_image_url : "",
       author: ""
     });
     if (results.length >= 30) break;
   }
+  return jsonResponse(request, { source: "hipmh", query, total: results.length, results });
+}
 
-  return jsonResponse(request, { source: "koudaimh", query, total: results.length, results });
+// Buka daftar gambar HipMH yang ter-encode (persis logika HipmhSource.kt):
+// payload `images` dibungkus marker qM9...Z7, dipecah jadi head/mid/tail,
+// digabung (tail+head+mid), chunk-7 ganjil dibalik, alfabet diterjemahkan
+// ke base64 biasa, lalu di-JSON.parse -> array path gambar.
+function hipmhDecodeImages(encoded) {
+  // Payload: qM9 + head + "Vx" + mid + "pL0" + tail + Z7 (persis
+  // HipmhSource.kt — marker Vx/pL0 adalah posisi pemotong yang BENAR).
+  // Rumus (n-5)/3 yang ada di komentar lama menghasilkan angka fraksional
+  // di beberapa chapter (mis. body 62496: 20830.33), dan floor-nya di JS
+  // membuat mid kehilangan 1 char -> JSON hasil decode terpotong di tengah
+  // ("Unterminated string"). Jadi potong di posisi marker, bukan hitung
+  // dari panjang.
+  let body = encoded.replace(/^qM9/, "").replace(/Z7$/, "");
+  const iVx = body.indexOf("Vx");
+  const iPL = iVx >= 0 ? body.indexOf("pL0", iVx + 2) : -1;
+  let head, mid, tail;
+  if (iVx >= 0 && iPL >= 0) {
+    head = body.slice(0, iVx);
+    mid = body.slice(iVx + 2, iPL);
+    tail = body.slice(iPL + 3);
+  } else {
+    // Fallback rumus lama (marker tidak ditemukan — payload varian lain).
+    const tailLen = Math.floor((body.length - 5) / 3);
+    const headLen = Math.floor((body.length - 5 - tailLen) / 2);
+    head = body.slice(0, headLen);
+    mid = body.slice(headLen + 2, body.length - 3 - tailLen);
+    tail = body.slice(-tailLen);
+  }
+  let b64 = (tail + head + mid).replace(/.{7}/g, (m, i) => {
+    const odd = Math.floor(i / 7) % 2 === 1;
+    return odd ? [...m].reverse().join("") : m;
+  });
+  b64 = [...b64].map(c => {
+    const idx = HIPMH_ENC_ALPHABET.indexOf(c);
+    return idx >= 0 ? HIPMH_DEC_ALPHABET[idx] : c;
+  }).join("");
+  // base64url -> bytes -> utf8
+  const b64p = b64.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = b64p + "=".repeat((4 - (b64p.length % 4)) % 4);
+  let raw;
+  try {
+    raw = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  } catch {
+    raw = Buffer.from(padded, "base64");
+  }
+  const text = new TextDecoder("utf-8").decode(raw);
+  let arr;
+  try {
+    arr = JSON.parse(text);
+  } catch {
+    // Payload kadang ter-decode jadi JSON yang terpotong di entry
+    // terakhir (trailing "#" — 1 byte sisa dari modulo b64).
+    // Penyelamat: buang 1 char dulu; kalau masih gagal (entry terakhir
+    // memang terpotong di tengah string), buang sampai koma terakhir
+    // dan tutup array — semua entry utuh tetap dipertahankan.
+    try {
+      arr = JSON.parse(text.slice(0, -1));
+    } catch {
+      const lastComma = text.lastIndexOf(",");
+      if (lastComma > 0) {
+        arr = JSON.parse(text.slice(0, lastComma) + "]");
+      } else {
+        arr = [];
+      }
+    }
+  }
+  return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+}
+
+// Buang SATU entri decoy (matematika sama dengan reader situs, lihat
+// HipmhSource.kt: kunci = (sid*0x9E3779B1 xor size*0x85EBCA6B) mod size,
+// index = orderId xor kunci).
+function hipmhDecoyIndex(size, orderId, sid) {
+  if (size <= 0) return null;
+  const key = (BigInt(sid) * 0x9E3779B1n) ^ (BigInt(size) * 0x85EBCA6Bn);
+  const idx = Number((BigInt(orderId) ^ key) % BigInt(size));
+  return idx >= 0 && idx < size ? idx : null;
+}
+
+// Resolve hid frontend (b64url("m:<mid>-c:<cid>")-suffix) ke api-hid
+// (b64url("c:<cid>")-suffix). html reader memuat `data-api-hid`.
+async function hipmhResolveApiHid(frontendHid) {
+  const prefix = frontendHid.split("-")[0];
+  let decoded = null;
+  try {
+    const b64p = prefix.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (prefix.replace(/-/g, "+").replace(/_/g, "/").length % 4)) % 4);
+    decoded = new TextDecoder("utf-8").decode(Uint8Array.from(atob(b64p), (c) => c.charCodeAt(0)));
+  } catch { return frontendHid; }
+  // sudah api-hid (prefix decode-nya tidak mulai "m:") -> pakai apa adanya
+  if (!decoded || !decoded.startsWith("m:")) return frontendHid;
+  const pageHeaders = new Headers();
+  pageHeaders.set("User-Agent", "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36");
+  pageHeaders.set("Accept", "text/html,application/xhtml+xml,*/*;q=0.8");
+  pageHeaders.set("Referer", "https://m.hipmh.com/");
+  try {
+    const pageRes = await safeFetch(`${HIPMH_READER}/chapter/${frontendHid}`, { method: "GET", headers: pageHeaders });
+    if (pageRes.ok) {
+      const page = await pageRes.text();
+      const m = page.match(/data-api-hid="([^"]+)"/);
+      if (m) return m[1];
+    }
+  } catch { /* fallback manual di bawah */ }
+  // fallback manual: bangun api-hid dari decoded ("m:<mid>-c:<cid>") + suffix
+  const cidPart = decoded.split(/-c:/).pop();
+  const enc = (v) => btoa(v).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const suffix = frontendHid.includes("-") ? frontendHid.split("-").slice(1).join("-") : "";
+  return enc("c:" + cidPart) + (suffix ? "-" + suffix : "");
+}
+
+// ============================================================
+// HANDLER URL (series + chapter) untuk HipMH
+// ============================================================
+// Dipanggil dari fetch() utama, SEBELUM handler generik. Mengembalikan
+// Response bila URL cocok, atau null agar diteruskan ke handler lain.
+async function handleHipmhUrl(request, targetUrl) {
+  const host = targetUrl.hostname.replace(/^www\./, "").toLowerCase();
+  const isHipmh = host === "m.hipmh.com" || host === "hipmh.com" || host.endsWith(".hipmh.com") ||
+                  host === "reader.hipmh.top" || host.endsWith(".hipmh.top");
+  if (!isHipmh) return null;
+
+  const reqUrl = new URL(request.url);
+  const path = targetUrl.pathname;
+
+  // SERIES: /series/{slug} atau /works/{slug} (slug = "<mid>-<nama>")
+  const seriesM = path.match(/^\/(?:series|works)\/([^\/]+)/);
+  if (seriesM) {
+    const slug = seriesM[1];
+    const mid = slug.split("-")[0];
+    const info = await hipmhApiGet(`/v1/manga?mid=${encodeURIComponent(mid)}`);
+    const title = String(info.title || mid).trim();
+    const authorList = (info.authors || []).map((a) => a && a.name).filter(Boolean).join(", ");
+    const cover = info.vertical_image_url ? HIPMH_COVER_BASE + info.vertical_image_url : "";
+    const status = { ongoing: "ongoing", completed: "completed", hiatus: "hiatus" }[info.status] || "";
+    const synopsis = String(info.description || "");
+
+    // Kumpulkan semua chapter (paginasi, 50/halaman, terbaru dulu, batas 40 hal).
+    const chapters = [];
+    const seen = new Set();
+    let page = 1;
+    let totalPages = 1;
+    do {
+      const d = await hipmhApiGet(`/v1/manga/chapters?mid=${encodeURIComponent(mid)}&page=${page}&per_page=50&order=desc`);
+      totalPages = parseInt(d.total_pages, 10) || 1;
+      for (const el of (d.items || [])) {
+        const o = el && typeof el === "object" ? el : {};
+        const hid = String(o.hid || "");
+        if (!hid || seen.has(hid)) continue;
+        seen.add(hid);
+        const t = String(o.title || "").trim();
+        const numM = t.match( /(\d+)/ );
+        chapters.push({
+          chapter_id: hid,
+          chapter_title: t || `Chapter ${chapters.length + 1}`,
+          chapter_num: numM ? parseInt(numM[1], 10) : null,
+          url: `${HIPMH_BASE}/chapter/go?hid=${encodeURIComponent(hid)}`
+        });
+      }
+      page++;
+    } while (page <= totalPages && page <= 40);
+
+    if (chapters.length === 0) {
+      return jsonResponse(request, { error: "Daftar chapter HipMH kosong", detail: mid }, 404);
+    }
+    // urutkan terbaru -> terlama (numur besar dulu, fallback urutan asli)
+    chapters.sort((a, b) => (b.chapter_num || 0) - (a.chapter_num || 0));
+
+    return new Response(JSON.stringify({
+      source: "hipmh",
+      type: "series",
+      manga_id: mid,
+      comic_title: title,
+      author: authorList,
+      cover,
+      status,
+      synopsis,
+      total_chapters: chapters.length,
+      chapters
+    }, null, 2), { status: 200, headers: { ...corsHeaders(request), "Content-Type": "application/json" } });
+  }
+
+  // CHAPTER: /chapter/go?hid=... atau /chapter/{hid} (reader)
+  // "go" di sini adalah PATH /chapter/go (bukan query) — query ?hid=
+  // ada di URL target (targetUrl.searchParams).
+  const chapM = path.match(/^\/chapter\/(go|([a-zA-Z0-9_-]+))\s*$/);
+  let rawHid = "";
+  if (chapM && chapM[2]) {
+    rawHid = chapM[2]; // /chapter/{hid}
+  } else if (targetUrl.searchParams.get("hid")) {
+    rawHid = targetUrl.searchParams.get("hid"); // /chapter/go?hid=...
+  }
+  if (!rawHid) return null; // bukan URL chapter HipMH
+
+  rawHid = decodeURIComponent(rawHid);
+  const apiHid = await hipmhResolveApiHid(rawHid);
+  const d = await hipmhApiGet(`/v2/chapter?hid=${encodeURIComponent(apiHid)}`);
+  const encoded = String(d.images || "");
+  if (!encoded) {
+    return jsonResponse(request, { error: "Chapter HipMH tidak berisi gambar", detail: apiHid }, 404);
+  }
+  const images = hipmhDecodeImages(encoded);
+  const orderId = Number(d.order_id) || 0;
+  const sid = Number(d.sid) || 0;
+  const decoyIdx = hipmhDecoyIndex(images.length, orderId, sid);
+  if (decoyIdx !== null) images.splice(decoyIdx, 1);
+  if (images.length === 0) {
+    return jsonResponse(request, { error: "Chapter HipMH kosong setelah buang decoy" }, 404);
+  }
+  const imgBase = Number(d.line) === 9 ? HIPMH_IMG_BASE_S1 : HIPMH_IMG_BASE;
+  const comicImages = images.map((p, i) => ({
+    page: i + 1,
+    url: p.startsWith("http") ? p : imgBase + (p.startsWith("/") ? "" : "/") + p
+  }));
+
+  return new Response(JSON.stringify({
+    source: "hipmh",
+    chapter_title: String(d.chapter_title || d.title || ""),
+    comic_title: String(d.manga_title || ""),
+    total_images: comicImages.length,
+    image_encrypted: false,
+    images: comicImages
+  }, null, 2), { status: 200, headers: { ...corsHeaders(request), "Content-Type": "application/json" } });
 }
 
 // Jjaptoon: halaman publik GET {origin}/search?q= (form method GET,
@@ -844,6 +1090,12 @@ export default {
     if (!["http:", "https:"].includes(targetUrl.protocol)) {
       return new Response("Only http/https", { status: 400, headers: corsHeaders(request) });
     }
+
+    // HipMH (m.hipmh.com / reader.hipmh.top): API-nya butuh headers khusus
+    // (X-Requested-With + Referer) dan URL chapter-nya tidak boleh lewat
+    // proxy umum — handleHipmhUrl mengurunginya di sini, sebelum check umum.
+    const hipmhResp = await handleHipmhUrl(request, targetUrl);
+    if (hipmhResp) return hipmhResp;
 
     // umum: proteksi SSRF — blok alamat internal terlebih dulu
     const hostname = targetUrl.hostname.toLowerCase();

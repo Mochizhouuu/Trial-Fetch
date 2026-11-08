@@ -510,12 +510,9 @@
     flex-shrink: 0;
   }
 
-  .chip-badge.jjaptoon{ background: var(--pink); }
-  .chip-badge.jjabtoon{ background: var(--red); }
   .chip-badge.goodtoon{ background: var(--blue-strong); }
    .chip-badge.baozimh{ background: var(--yellow); }
   .chip-badge.wmanhua{ background: var(--purple); }
-  .chip-badge.koudaimh{ background: var(--green); }
   .chip-badge.rumanhua{ background: var(--pink-deep); }
   .chip-badge.manwang{ background: var(--yellow-deep); }
 
@@ -1454,9 +1451,9 @@
       <button type="button" class="search-chip active" data-source="all">Semua</button>
       <button type="button" class="search-chip" data-source="baozimh">Baozimh</button>
       <button type="button" class="search-chip" data-source="wmanhua">Wmanhua</button>
-      <!-- Jjabtoon DINONAKTIFKAN (Nov 2026): situs mati. Paste URL tetap bisa. -->
-      <button type="button" class="search-chip" data-source="koudaimh">Koudaimh</button>
-      <button type="button" class="search-chip" data-source="jjaptoon">Jjaptoon</button>
+      <!-- Jjabtoon & Jjaptoon dihapus (Nov 2026): tidak di-update lagi.
+           Koudaimh diganti HipMH (m.hipmh.com, lewat API — terverifikasi). -->
+      <button type="button" class="search-chip" data-source="hipmh">HipMH</button>
       <button type="button" class="search-chip" data-source="goodtoon">GoodToon</button>
       <!-- Rumanhua DINONAKTIFKAN sementara (chip disembunyikan): origin
         (192.3.216.80, tanpa CDN) memblokir IP egress Cloudflare Workers
@@ -1498,12 +1495,11 @@
       <p class="info-sheet-desc">Saat ini Trial Fetch bisa mengambil chapter dari sumber berikut:</p>
       <div class="site-chips">
         <span class="site-chip">Baozimh</span>
-        <span class="site-chip">Jjaptoon</span>
-        <span class="site-chip" title="Situs mati — masih bisa lewat paste URL">Jjabtoon</span>
         <span class="site-chip">Wmanhua</span>
-        <span class="site-chip">Koudaimh</span>
+        <span class="site-chip">HipMH</span>
         <span class="site-chip">GoodToon</span>
         <span class="site-chip">Manwang</span>
+        <span class="site-chip">Rumanhua</span>
       </div>
       <button type="button" class="btn-close" id="info-close">Tutup</button>
     </div>
@@ -1553,8 +1549,6 @@
     // URL lengkap tempelan user SELALU dipakai apa adanya (tidak perlu update
     // saat domain pindah); konstanta ini cuma dipakai kalau user menempel ID
     // angka polos. Kalau domain pindah lagi, cukup update 2 baris ini.
-    const DEFAULT_JJAPTOON_ORIGIN = 'https://www.jjaptoon008.com';
-    const DEFAULT_JJABTOON_ORIGIN = 'https://jjabtoon001.com';
 
     let queueGeneration = 0;
 
@@ -1587,13 +1581,12 @@
     // tekan tombol Unduh di 10 chip sekaligus, itu jadi ~50 request gambar
     // paralel ke proxy. Dengan semaphore global, total slot aktif di
     // seluruh chapter tetap dibatasi angka yang sama.
-    // Diturunkan dari 5 ke 3: CDN bertanda tangan seperti shimolife.com
-    // (dipakai Koudaimh) cenderung menolak sebagian request kalau terlalu
-    // banyak koneksi paralel datang sekaligus dalam waktu singkat (chapter
-    // dengan 200+ gambar jadi rawan bolong). Semaphore ini global untuk
-    // semua sumber, bukan cuma Koudaimh, tapi retry otomatis yang sudah ada
-    // menutupi perlambatan ini untuk platform lain yang memang lebih toleran
-    // terhadap concurrency tinggi.
+    // Diturunkan dari 5 ke 3: sebagian CDN (mis. s3imgs.top milik HipMH,
+    // dulunya shimolife milik Koudaimh) cenderung menolak sebagian request
+    // kalau terlalu banyak koneksi paralel datang sekaligus dalam waktu
+    // singkat (chapter dengan 200+ gambar jadi rawan bolong). Semaphore
+    // ini global untuk semua sumber; retry ringan menutupi perlambatan
+    // untuk platform lain yang lebih toleran terhadap concurrency tinggi.
     const DOWNLOAD_CONCURRENCY = 3;
     let activeDownloadSlots = 0;
     const downloadWaiters = [];
@@ -2108,7 +2101,7 @@
     // CARI JUDUL + SERIES TERSIMPAN (fitur baru)
     // ------------------------------------------------------------
     // Cari Judul memakai endpoint ?action=search di worker (sumber yang
-    // sudah terverifikasi: baozimh, wmanhua, jjabtoon). Hasilnya berupa
+    // sudah terverifikasi: baozimh, wmanhua, hipmh, goodtoon). Hasilnya berupa
     // series, jadi tombol "Pilih" tinggal meneruskannya ke fetchSeries()
     // yang sudah ada — tidak ada alur baru.
     // Series Tersimpan memakai localStorage (kunci di bawah), jadi daftar
@@ -2119,9 +2112,10 @@
     // di atas): keduanya origin memblokir IP egress Cloudflare dengan 403 —
     // untuk manwang khususnya hanya pada endpoint search (series & chapter
     // tetap jalan, jadi paste URL langsung masih bisa).
-    // Jjabtoon sengaja tidak ada: situs mati.
-    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'koudaimh', 'jjaptoon', 'goodtoon'];
-    const SEARCH_SOURCE_NAMES = { baozimh: 'Baozimh', wmanhua: 'Wmanhua', jjabtoon: 'Jjabtoon', koudaimh: 'Koudaimh', jjaptoon: 'Jjaptoon', goodtoon: 'GoodToon', rumanhua: 'Rumanhua', manwang: 'Manwang' };
+    // Jjabtoon & Jjaptoon dihapus (Nov 2026): tidak di-update lagi.
+    // Koudaimh diganti HipMH (m.hipmh.com, via API JSON — terverifikasi).
+    const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'hipmh', 'goodtoon'];
+    const SEARCH_SOURCE_NAMES = { baozimh: 'Baozimh', wmanhua: 'Wmanhua', hipmh: 'HipMH', goodtoon: 'GoodToon', rumanhua: 'Rumanhua', manwang: 'Manwang' };
     // State tab ditaruh di sini (awal, sebelum renderSavedSeries() dipanggil
     // saat muat) — bukan di section tab di bawah — supaya tidak kena
     // temporal-dead-zone saat updateTabBadges() berjalan saat startup.
@@ -2132,7 +2126,7 @@
     // section ini dieksekusi lebih dulu saat halaman dimuat, termasuk
     // renderSavedSeries(), jadi tidak boleh menyentuh const yang
     // dideklarasikan belakangan).
-    const SEARCH_BADGE_CLASS = { jjaptoon: 'jjaptoon', jjabtoon: 'jjabtoon', goodtoon: 'goodtoon', baozimh: 'baozimh', manwa: 'manwa', wmanhua: 'wmanhua', koudaimh: 'koudaimh', rumanhua: 'rumanhua', manwang: 'manwang' };
+    const SEARCH_BADGE_CLASS = { goodtoon: 'goodtoon', baozimh: 'baozimh', manwa: 'manwa', wmanhua: 'wmanhua', hipmh: 'hipmh', rumanhua: 'rumanhua', manwang: 'manwang' };
     const SAVED_KEY = 'tf-saved-series';
     const MAX_SEARCH_PER_SOURCE = 10;
 
@@ -2566,16 +2560,9 @@
     }
 
     // Hash SHA-256 (hex) dari file placeholder yang diketahui dikirim CDN
-    // Koudaimh (shimolife.com) untuk sebagian request yang "ditolak secara
-    // halus" — bukan lewat HTTP error (401/403/dst) yang mudah dideteksi,
-    // melainkan dibalas status 200 dengan gambar JPEG 1200x1 piksel putih
-    // polos, byte-identik di semua kejadian (diverifikasi manual: MD5 sama
-    // persis di 8 sampel berbeda dari chapter yang sama). Deteksi berbasis
-    // HASH KONTEN, bukan cuma ukuran/dimensi file, sengaja dipilih karena
-    // gambar strip pendek (lebar penuh, tinggi cuma beberapa piksel) adalah
-    // format yang SAH untuk sebagian chapter Koudaimh/Kuaikan asli — kalau
-    // deteksi cuma berdasar "tinggi 1px" atau "ukuran < N bytes", potongan
-    // gambar asli yang memang tipis akan salah ditolak sebagai placeholder.
+    // Koudaimh (shimolife.com) — sumber ini sudah dihapus (Nov 2026,
+    // diganti HipMH), tapi fungsi ini dipertahankan: murah, bisa dipakai
+    // lagi kalau sumber lain ternyata membalas gambar placeholder halus.
     const KNOWN_PLACEHOLDER_HASHES = new Set([
       '4ea088b69b1c9e7d0e394e4278b922c0b0988e6a33c2cd796dd7d4c9a6860dfb'
     ]);
@@ -2596,8 +2583,7 @@
       return match ? `https://static-tw.baozimh.com/${match[1]}` : url;
     }
 
-    // URLSearchParams melakukan encoding tepat satu kali. Ini penting untuk
-    // signed URL Koudaimh/Shimolife yang memiliki query signature.
+    // URLSearchParams melakukan encoding tepat satu kali (jangan double-encode).
     function buildProxyUrl(targetUrl, referer = '') {
       const proxy = new URL(PROXY_URL);
       proxy.searchParams.set('url', targetUrl);
@@ -2635,25 +2621,17 @@
 
     function detectSource(input) {
       const value = input.trim().toLowerCase();
-      if (/^\d{6,}$/.test(value)) return 'jjaptoon';
       try {
         const url = new URL(value);
         const hostname = url.hostname.replace(/^www\./, '');
-        // KOREKSI 2 Sep 2026: sempat salah diasumsikan "jjaptoon berganti
-        // nama total jadi jjabtoon" — TERNYATA SALAH. Keduanya situs
-        // BERBEDA yang hidup berdampingan (jjaptoon sempat error/down
-        // sementara, bukan mati permanen; jjabtoon ditemukan terpisah saat
-        // user mencari alternatif). Dipisah jadi dua source string sendiri,
-        // user pilih sesuai URL yang dipaste — TIDAK digabung lagi lewat
-        // regex jja[pb]toon.
-        if (/^jjaptoon\d*\.(com|net|vip|xyz|top|me)$/.test(hostname)) return 'jjaptoon';
-        // jjabtoon: path chapter-nya /episodes/{id} (beda dari jjaptoon
-        // yang /chapters/{id}), ditangani di getSourceConfig().jjabtoon.extractId.
-        if (/^jjabtoon\d*\.(com|net|vip|xyz|top|me)$/.test(hostname)) return 'jjabtoon';
+        // HipMH (m.hipmh.com / reader.hipmh.top): chapter lewat
+        // /chapter/go?hid=... atau reader /chapter/{hid} — semua data
+        // diambil worker lewat API JSON, bukan scrape HTML.
+        if (hostname === 'm.hipmh.com' || hostname === 'reader.hipmh.top') return 'hipmh';
         // GoodToon: tema Madara, path chapter /manga/{slug}/{nomor}/ atau
         // /manga/{slug}/chapter-{nomor}/ — ditangani di
         // getSourceConfig().goodtoon.extractId. Nomor domain bisa berubah
-        // (goodtoon002, 003, dst) seperti jjaptoon. Path DIVALIDASI di sini
+        // (goodtoon002, 003, dst). Path DIVALIDASI di sini
         // (harus ada nomor chapter di akhir), bukan cuma hostname — karena
         // URL series (/manga/{slug}/ tanpa nomor) dan URL chapter cuma
         // beda satu segmen path, jadi kalau detectSeriesSource() di
@@ -2663,10 +2641,6 @@
         if (hostname === 'twmanga.com' || hostname.endsWith('.twmanga.com') ||
             hostname === 'baozimh.com' || hostname.endsWith('.baozimh.com')) return 'baozimh';
         if (hostname === 'wmanhua.com') return 'wmanhua';
-        // koudaimh dipakai lewat subdomain m. (bukan www.), jadi strip
-        // keduanya di sini saja — platform lain tidak pakai subdomain m.
-        // jadi baris strip global di atas sengaja tidak diubah.
-        if (hostname.replace(/^m\./, '') === 'koudaimh.com') return 'koudaimh';
         // Rumanhua: chapter /show/{kode}.html (situs kembar Manwang, backend
         // sama — gambar terenkripsi jsjiami, dibuka worker).
         if (hostname === 'rumanhua.org' || hostname.endsWith('.rumanhua.org')) return 'rumanhua';
@@ -2696,21 +2670,11 @@
           const match = value.match(/(?:baozimh\.com|twmanga\.com)\/comic\/([^/?#]+)\/?(?:[?#]|$)/);
           if (match && match[1] !== 'chapter') return { source: 'baozimh', comicId: match[1] };
         }
-        // jjaptoon rutin ganti domain (nomor + TLD) — pola sama seperti yang
-        // dipakai detectSource untuk chapter, supaya tahan kalau situsnya
-        // pindah lagi. Series-nya /comics/{id} (jamak), beda dari chapter
-        // yang /chapters/{id} (jamak juga tapi path berbeda), jadi tidak
-        // ada risiko tabrakan.
-        if (/^jjaptoon\d*\.(com|net|vip|xyz|top|me)$/.test(hostname)) {
-          const match = value.match(/\/comics\/(\d+)/);
-          if (match) return { source: 'jjaptoon', comicId: match[1] };
-        }
-        // jjabtoon: situs BEDA dari jjaptoon (lihat catatan detectSource di
-        // atas). Series-nya /webtoons/{id}, beda dari chapter yang
-        // /episodes/{id}.
-        if (/^jjabtoon\d*\.(com|net|vip|xyz|top|me)$/.test(hostname)) {
-          const match = value.match(/\/webtoons\/(\d+)/);
-          if (match) return { source: 'jjabtoon', comicId: match[1] };
+        // HipMH: series-nya /series/{slug} di m.hipmh.com — data diambil
+        // worker lewat API (handleHipmhUrl), comicId tidak dipakai.
+        if (hostname === 'm.hipmh.com') {
+          const match = value.match(/\/series\/([^/]+)/);
+          if (match) return { source: 'hipmh', comicId: '' };
         }
         // GoodToon: series-nya /manga/{slug}/ TANPA segmen nomor chapter di
         // belakang. Chapter-nya /manga/{slug}/{nomor}/ atau
@@ -2720,16 +2684,6 @@
         if (/^goodtoon\d*\.(com|net|top|xyz)$/.test(hostname)) {
           const match = value.match(/\/manga\/([^/?#]+)\/?(?:[?#]|$)/);
           if (match) return { source: 'goodtoon', comicId: match[1] };
-        }
-        if (hostname.replace(/^m\./, '') === 'koudaimh.com') {
-          // Series-nya /manhua/{slug} tanpa segmen nomor chapter + .html di
-          // belakang. Chapter-nya /manhua/{slug}/{id}.html (sudah ditangani
-          // alur biasa) — pastikan pola ini TIDAK ikut cocok di sini.
-          const chapterLike = /\/manhua\/[^/]+\/\d+\.html/.test(value);
-          if (!chapterLike) {
-            const match = value.match(/koudaimh\.com\/manhua\/([^/?#]+)\/?(?:[?#]|$)/);
-            if (match) return { source: 'koudaimh', comicId: match[1] };
-          }
         }
         if (hostname === 'rumanhua.org' || hostname.endsWith('.rumanhua.org')) {
           // Series-nya /news/{id} (numerik), chapter-nya /show/{kode}.html —
@@ -2749,101 +2703,18 @@
 
     function getSourceConfig(source) {
       const configs = {
-        jjaptoon: {
-          name: 'Jjaptoon',
-          referer: 'https://www.jjaptoon008.com/',
-          // true = referer unduhan diambil otomatis dari origin URL tempelan
-          // user (pasti domain aktif), bukan dari field referer di atas —
-          // jadi tidak perlu update manual tiap situsnya pindah domain.
-          dynamicReferer: true,
-          extractId: (input) => {
-            const match = input.match(/\/chapters\/(\d+)/);
-            if (match) return match[1];
-            const numMatch = input.match(/^(\d{6,})$/);
-            if (numMatch) return numMatch[1];
-            return null;
-          },
-          buildUrl: (id, input) => {
-            if (input.includes('jjaptoon')) return input;
-            return `${DEFAULT_JJAPTOON_ORIGIN}/chapters/${id}`;
-          }
-        },
-        // jjabtoon: situs BEDA dari jjaptoon (ditemukan terpisah 2 Sep
-        // 2026, keduanya hidup berdampingan — lihat catatan lengkap di
-        // detectSource). Domain aktif jjabtoon001.com, path chapter
-        // /episodes/{id} (bukan /chapters/{id} seperti jjaptoon). Entri
-        // config sendiri, JANGAN digabung lagi dengan jjaptoon di atas.
-        jjabtoon: {
-          name: 'Jjabtoon',
-          referer: 'https://jjabtoon001.com/',
-          // Lihat catatan dynamicReferer di jjaptoon: referer unduhan ikut
-          // origin URL tempelan user supaya tahan pindah domain.
-          dynamicReferer: true,
-          extractId: (input) => {
-            const match = input.match(/\/episodes\/(\d+)/);
-            if (match) return match[1];
-            // SENGAJA tidak menerima ID angka polos: input digit murni selalu
-            // dirutekan ke jjaptoon oleh detectSource (lihat di atas), jadi
-            // menerima digit di sini hanya menciptakan jalur mati yang tidak
-            // pernah tercapai. Untuk jjabtoon, tempel URL lengkap /episodes/.
-            return null;
-          },
-          buildUrl: (id, input) => {
-            if (/jjabtoon/.test(input)) return input;
-            return `${DEFAULT_JJABTOON_ORIGIN}/episodes/${id}`;
-          }
-        },
-        // GoodToon: tema WordPress Madara, entri TERPISAH dari jjaptoon/
-        // jjabtoon. ID chapter-nya butuh comic slug + nomor chapter
-        // sekaligus (URL /manga/{slug}/{nomor}/), bukan angka tunggal
-        // seperti platform lain — jadi buildUrl cukup mengembalikan input
-        // apa adanya (sama seperti pola koudaimh), tidak membangun ulang
-        // URL dari ID saja. extractId dipakai cuma untuk validasi format
-        // (memastikan ada slug + nomor), bukan untuk reconstruct URL.
-        goodtoon: {
-          name: 'GoodToon',
-          referer: 'https://www.goodtoon005.com/',
-          // Lihat catatan dynamicReferer di jjaptoon: referer unduhan ikut
-          // origin URL tempelan user supaya tahan pindah domain.
-          dynamicReferer: true,
-          extractId: (input) => {
-            const match = input.match(/\/manga\/([^/]+)\/(?:chapter-)?(\d+)\/?/);
-            if (match) return `${match[1]}/${match[2]}`;
-            return null;
-          },
-          buildUrl: (id, input) => input
-        },
-        baozimh: {
-          name: 'Baozimh',
-          referer: 'https://appgb.baozimh.com/',
-          extractId: (input) => {
-            const match = input.match(/(?:twmanga\.com|baozimh\.com)\/(?:comic\/chapter|baozimhapp\/comic\/chapter)\/([^/]+)\/([^/?#]+)\.html/);
-            return match ? `${match[1]}/${match[2]}` : null;
-          },
-          buildUrl: (id, input) => input
-        },
-        wmanhua: {
-          name: 'Wmanhua',
-          referer: 'https://www.wmanhua.com/',
-          extractId: (input) => {
-            const match = input.match(/wmanhua\.com\/chapter\/(\d+)-(\d+)\.html/);
-            return match ? `${match[1]}-${match[2]}` : null;
-          },
-          buildUrl: (id, input) => input
-        },
-        koudaimh: {
-          name: 'Koudaimh',
-          // Sengaja dikosongkan: gambar chapter Koudaimh di-host di CDN
-          // shimolife.com yang halaman aslinya memuatnya dengan
-          // referrerpolicy="no-referrer" — browser asli memang tidak
-          // pernah mengirim Referer sama sekali ke CDN ini. Worker juga
-          // sudah menangani ini di sisi generic proxy (skip Referer/Origin
-          // khusus untuk *.shimolife.com), jadi nilai kosong di sini
-          // konsisten dengan itu dan tidak mengirim parameter yang percuma.
+        // HipMH (m.hipmh.com) — pengganti Koudaimh (Nov 2026). Semua data
+        // lewat API JSON worker (handleHipmhUrl), bukan scrape HTML: URL
+        // apa pun dari hipmh dikirim apa adanya; extractId hanya validasi
+        // bahwa URL-nya memang chapter (go?hid= / reader /chapter/{hid}).
+        // Gambar tidak butuh Referer (CDN s3imgs.top menerima tanpa itu —
+        // terverifikasi).
+        hipmh: {
+          name: 'HipMH',
           referer: '',
           extractId: (input) => {
-            const match = input.match(/koudaimh\.com\/manhua\/([^/]+)\/(\d+)\.html/);
-            return match ? `${match[1]}/${match[2]}` : null;
+            const m = input.toLowerCase().match(/(m\.hipmh\.com|reader\.hipmh\.top)\/chapter\/(go\?hid=[^&#]+|[a-z0-9_\-]+)/);
+            return m ? m[1] + '/chapter/' + m[2] : null;
           },
           buildUrl: (id, input) => input
         },
@@ -2870,12 +2741,10 @@
     }
 
     function extractImages(source, data) {
-      if (source === 'jjaptoon') return (data.images || []).map(img => img.url);
-      if (source === 'jjabtoon') return (data.images || []).map(img => img.url);
       if (source === 'goodtoon') return (data.images || []).map(img => img.url);
       if (source === 'baozimh') return (data.images || []).map(img => rewriteBzcdnUrl(img.url));
       if (source === 'wmanhua') return (data.images || []).map(img => img.url);
-      if (source === 'koudaimh') return (data.images || []).map(img => img.url);
+      if (source === 'hipmh') return (data.images || []).map(img => img.url);
       if (source === 'rumanhua') return (data.images || []).map(img => img.url);
       if (source === 'manwang') return (data.images || []).map(img => img.url);
       return [];
@@ -2894,7 +2763,7 @@
       updateTabBadges();
     }
 
-    const SOURCE_BADGE_CLASS = { jjaptoon: 'jjaptoon', jjabtoon: 'jjabtoon', goodtoon: 'goodtoon', baozimh: 'baozimh', wmanhua: 'wmanhua', koudaimh: 'koudaimh' };
+    const SOURCE_BADGE_CLASS = { goodtoon: 'goodtoon', baozimh: 'baozimh', wmanhua: 'wmanhua', hipmh: 'hipmh' };
     const MAX_THUMBS = (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) ? 3 : 8;
 
     function createChip() {
@@ -3008,8 +2877,8 @@
       // Referer untuk unduhan gambar: kalau config bertanda dynamicReferer,
       // pakai origin URL chapter yang ditempel user (selalu domain aktif —
       // tidak perlu update manual saat situs pindah domain). Kalau tidak,
-      // pakai nilai tetap di config (baozimh/wmanhua stabil, koudaimh
-      // memang harus kosong karena CDN-nya no-referrer).
+      // pakai nilai tetap di config (baozimh/wmanhua stabil; hipmh
+      // memang harus kosong karena CDN s3imgs.top tidak butuh Referer).
       let downloadReferer = config.referer;
       if (config.dynamicReferer) {
         try {
@@ -3122,49 +2991,10 @@
       const viaRumanhuaDecrypt = source === 'rumanhua' && !!stored.imageEncrypted;
       let data = stored.data;
       let images = stored.images.slice();
-      let signedUrlRevision = 0;
-      let signedRefreshPromise = null;
-      let signedRefreshCount = 0;
-      const MAX_SIGNED_URL_REFRESHES = 4;
       const dlBtn = row.querySelector('.btn-dl-mini');
       dlBtn.disabled = true;
 
-      async function refreshKoudaimhSignedUrls(expectedRevision = signedUrlRevision) {
-        if (source !== 'koudaimh') return false;
-        if (expectedRevision !== signedUrlRevision) return true;
-        if (signedRefreshCount >= MAX_SIGNED_URL_REFRESHES) return false;
-        if (!signedRefreshPromise) {
-          signedRefreshCount++;
-          signedRefreshPromise = (async () => {
-            const freshData = await fetchProxyJson(targetUrl);
-            const freshImages = extractImages(source, freshData);
-            if (!freshImages.length) throw new Error('Refresh Koudaimh tidak menghasilkan URL gambar');
-            if (images.length && freshImages.length !== images.length) {
-              throw new Error(`Jumlah halaman berubah setelah refresh: ${images.length} menjadi ${freshImages.length}`);
-            }
-            data = freshData;
-            images = freshImages;
-            stored.data = freshData;
-            stored.images = freshImages;
-            signedUrlRevision++;
-            return true;
-          })().finally(() => { signedRefreshPromise = null; });
-        }
-        return signedRefreshPromise;
-      }
-
       try {
-        if (source === 'koudaimh') {
-          updateChip(row, { status: 'memperbarui link gambar', statusClass: 'active', percent: 0, error: false });
-          const freshData = await fetchProxyJson(targetUrl);
-          const freshImages = extractImages(source, freshData);
-          if (!freshImages.length) throw new Error('Koudaimh tidak mengembalikan gambar setelah refresh metadata');
-          data = freshData;
-          images = freshImages;
-          stored.data = freshData;
-          stored.images = freshImages;
-        }
-
         updateChip(row, { status: `0/${images.length}`, statusClass: 'active', percent: 0, error: false });
         showToast('info', `Mengunduh ${images.length} gambar...`, 2500);
 
@@ -3196,22 +3026,20 @@
 
             // Retry ringan (maks 3 percobaan, jeda singkat antar percobaan)
             // sebelum benar-benar menyerah pada satu gambar. Ditambahkan
-            // karena sumber seperti Koudaimh melayani gambar dari CDN
-            // bertanda tangan (shimolife.com) yang sesekali membalas error
+            // karena CDN gambar (mis. s3imgs.top milik HipMH, dulunya
+            // shimolife milik Koudaimh) sesekali membalas error
             // sesaat/rate-limit untuk sebagian kecil request dalam satu
             // batch — tanpa retry, kegagalan sekali fetch langsung membuat
             // halaman itu hilang permanen dari ZIP tanpa diberi kesempatan
             // kedua (lihat laporan bug: halaman bolong acak, bukan cuma
             // halaman pertama).
-            const MAX_ATTEMPTS = config.name === 'Koudaimh' ? 5 : 3;
+            const MAX_ATTEMPTS = 3;
             let lastErr = null;
             let ok = false;
-            let refreshedForPage = false;
 
             for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
               if (currentGeneration !== queueGeneration) return;
               url = images[i];
-              const revisionAtAttempt = signedUrlRevision;
               try {
                 const imgProxyUrl = viaRumanhuaDecrypt ? buildRumanhuaImageUrl(url) : buildProxyUrl(url, downloadReferer);
                 const res = await fetch(imgProxyUrl, { cache: 'no-store' });
@@ -3236,16 +3064,6 @@
                   throw requestError;
                 }
                 const blob = await res.blob();
-                // Ganti dari cek "ukuran < 1000 bytes" (salah tangkap
-                // strip gambar asli yang memang tipis) menjadi cek hash
-                // konten terhadap placeholder Koudaimh yang sudah dikenal
-                // — lihat penjelasan KNOWN_PLACEHOLDER_HASHES di atas.
-                if (source === 'koudaimh' && blob.size < 5000) {
-                  const hash = await sha256Hex(blob);
-                  if (KNOWN_PLACEHOLDER_HASHES.has(hash)) {
-                    throw Object.assign(new Error(`gambar placeholder (CDN membalas dummy 1px, hash cocok)`), { status: 403 });
-                  }
-                }
                 // Pemotong banner otomatis — KHUSUS Baozimh + toggle aktif.
                 // maybeCropBanner tidak pernah throw dan tidak pernah
                 // menghilangkan halaman: gagal = blob asli.
@@ -3278,22 +3096,12 @@
                 break;
               } catch (err) {
                 lastErr = err;
-                const possiblyExpired = source === 'koudaimh' && [401, 403, 404].includes(err.status);
-                if (possiblyExpired && !refreshedForPage) {
-                  refreshedForPage = true;
-                  try {
-                    const refreshed = await refreshKoudaimhSignedUrls(revisionAtAttempt);
-                    if (refreshed) continue;
-                  } catch (refreshErr) {
-                    lastErr = new Error(`${err.message}; refresh signed URL gagal: ${refreshErr.message}`);
-                  }
-                }
                 if (attempt < MAX_ATTEMPTS) {
                   // Jeda lebih longgar sebelum retry (700ms, lalu 1400ms) —
                   // rate-limit di sisi CDN biasanya butuh sedikit waktu
                   // untuk pulih, jeda yang terlalu singkat kemungkinan
                   // besar akan gagal lagi dengan alasan yang sama.
-                  await new Promise((resolve) => setTimeout(resolve, (config.name === 'Koudaimh' ? 1100 : 700) * attempt));
+                  await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
                 }
               }
             }
