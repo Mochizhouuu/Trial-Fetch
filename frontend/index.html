@@ -1,25 +1,23 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="color-scheme" content="dark light">
-<meta name="theme-color" content="#0f1117">
+<meta name="color-scheme" content="light dark">
 <title>Trial Fetch</title>
 
 <script>
-  // Kinetic Panel: dark-first. Nilai tersimpan manual tetap menang;
-  // kalau tidak ada, ikut sistem, fallback dark.
   (function(){
-    let theme = 'dark';
     try {
       const saved = localStorage.getItem('tf-theme');
       const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      theme = (saved === 'dark' || saved === 'light') ? saved : (systemDark ? 'dark' : 'light');
-    } catch(e) {}
-    document.documentElement.dataset.theme = theme;
+      const theme = (saved === 'dark' || saved === 'light') ? saved : (systemDark ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+    } catch(e) {
+      document.documentElement.dataset.theme = 'light';
+    }
   })();
 </script>
 
@@ -27,111 +25,85 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
 <style>
-  /* ============================================================
-     TRIAL FETCH — desain baru (Kinetic Panel)
-     Glassmorphism lembut + aksen indigo, dark-first.
-     ============================================================ */
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
   :root{
-    color-scheme: dark;
-    --bg: #0f1117;
-    --bg-ambient: radial-gradient(1100px 700px at 50% -200px, rgba(99,102,241,0.20), transparent 60%),
-                  radial-gradient(700px 480px at 100% 100%, rgba(6,182,212,0.10), transparent 55%),
-                  var(--bg);
-    --card: #181b26;
-    --card-elevated: #1e2230;
-    --card-glass: rgba(30,34,48,0.72);
-    --card-glass-strong: rgba(24,27,38,0.88);
-    --border: 1px solid rgba(255,255,255,0.08);
-    --border-strong: 1px solid rgba(99,102,241,0.45);
-    --glow: 0 8px 32px -4px rgba(99,102,241,0.18);
+    color-scheme: light;
+    --bg: #F3EFE9;
+    --bg-dot: #ffffff80;
+    --bg-translucent: rgba(243, 239, 233, 0.86);
+    --card: #E4DFD6;
+    --card-light: #FBF9F5;
 
-    --primary: #6366f1;
-    --primary-bright: #818cf8;
-    --primary-dim: rgba(99,102,241,0.18);
-    --secondary: #ff5757;
-    --tertiary: #06b6d4;
+    --pink: #F6C9DB;
+    --pink-deep: #E8A9C6;
+    --blue: #C3E4F5;
+    --blue-strong: #8ECDEA;
+    --yellow: #FFEEA8;
+    --yellow-deep: #F0D97E;
+    --green: #BDE5C8;
+    --green-deep: #7DBE90;
+    --green-ink: #2F6B40;
+    --purple: #DBCBF0;
+    --purple-deep: #C0A8E0;
+    --red: #F2A0A0;
+    --red-deep: #E85D5D;
+    --red-ink: #B03636;
 
-    --ink: #e2e2eb;
-    --ink-soft: #94a3b8;
-    --ink-faint: #64748b;
-    --ink-on-primary: #ffffff;
-
-    --success: #34d399;
-    --success-dim: rgba(52,211,153,0.16);
-    --error: #f87171;
-    --error-dim: rgba(248,113,113,0.16);
-    --warning: #fbbf24;
-    --warning-dim: rgba(251,191,36,0.16);
-    --info: #60a5fa;
-    --info-dim: rgba(96,165,250,0.16);
-
-    --overlay: rgba(10,12,20,0.7);
-
-    /* Mapping class lama -> token baru */
-    --pink: var(--primary);
-    --pink-deep: var(--primary-bright);
-    --blue: var(--info);
-    --blue-strong: #93c5fd;
-    --yellow: var(--warning);
-    --yellow-deep: #f59e0b;
-    --green: var(--success);
-    --green-deep: var(--success);
-    --green-ink: var(--success);
-    --purple: #a78bfa;
-    --purple-deep: #8b5cf6;
-    --red: var(--secondary);
-    --red-deep: var(--secondary);
-    --red-ink: var(--error);
-    --outline: rgba(148,163,184,0.35);
-    --shadow: rgba(0,0,0,0.55);
-    --on-accent: var(--ink-on-primary);
-
-    --toast-success-bg: var(--success-dim);
-    --toast-error-bg: var(--error-dim);
-    --toast-info-bg: var(--info-dim);
-    --toast-warning-bg: var(--warning-dim);
-    --toast-ink: var(--ink);
+    --ink: #3A3733;
+    --ink-soft: #8A857E;
+    --outline: #B3AEA6;
+    --overlay: rgba(58,55,51,0.45);
+    --shadow: var(--outline);
 
     --title-color: var(--ink);
-    --title-shadow: transparent;
+    --title-shadow: var(--pink);
+    --on-accent: #3A3733;
+
+    --toast-success-bg: var(--green);
+    --toast-error-bg: #F7C6C6;
+    --toast-info-bg: var(--blue);
+    --toast-warning-bg: var(--yellow);
+    --toast-ink: #3A3733;
   }
 
-  [data-theme="light"]{
-    color-scheme: light;
-    --bg: #f4f5fb;
-    --bg-ambient: radial-gradient(1100px 700px at 50% -200px, rgba(99,102,241,0.14), transparent 60%),
-                  radial-gradient(700px 480px at 100% 100%, rgba(6,182,212,0.10), transparent 55%),
-                  var(--bg);
-    --card: #ffffff;
-    --card-elevated: #ffffff;
-    --card-glass: rgba(255,255,255,0.78);
-    --card-glass-strong: rgba(255,255,255,0.92);
-    --border: 1px solid rgba(15,23,42,0.08);
-    --border-strong: 1px solid rgba(99,102,241,0.35);
-    --glow: 0 8px 32px -4px rgba(99,102,241,0.16);
+  [data-theme="dark"]{
+    color-scheme: dark;
+    --bg: #262322;
+    --bg-dot: #ffffff24;
+    --bg-translucent: rgba(38, 35, 34, 0.88);
+    --card: #3C3835;
+    --card-light: #2F2C2A;
 
-    --ink: #111319;
-    --ink-soft: #5b6472;
-    --ink-faint: #94a3b8;
-    --ink-on-primary: #ffffff;
+    --pink: #E9A8C4;
+    --pink-deep: #C77FA2;
+    --blue: #8FC8E4;
+    --blue-strong: #6FBEE3;
+    --yellow: #E8D38A;
+    --yellow-deep: #C9AF5C;
+    --green: #6FA87F;
+    --green-deep: #557f63;
+    --green-ink: #A8E0B8;
+    --purple: #A88FC9;
+    --purple-deep: #8A6BB0;
+    --red: #C96A6A;
+    --red-deep: #E86A6A;
+    --red-ink: #FFB0B0;
 
-    --success-dim: rgba(16,185,129,0.14);
-    --error-dim: rgba(239,68,68,0.14);
-    --warning-dim: rgba(245,158,11,0.18);
-    --info-dim: rgba(37,99,235,0.14);
+    --ink: #D8D2C8;
+    --ink-soft: #9A938A;
+    --outline: #57524C;
+    --overlay: rgba(0,0,0,0.6);
+    --shadow: #191614;
 
-    --overlay: rgba(15,23,42,0.45);
+    --title-color: var(--pink);
+    --title-shadow: #6E2F49;
 
-    --shadow: rgba(15,23,42,0.12);
-    --toast-success-bg: var(--success-dim);
-    --toast-error-bg: var(--error-dim);
-    --toast-info-bg: var(--info-dim);
-    --toast-warning-bg: var(--warning-dim);
-    --toast-ink: var(--ink);
-    --title-color: var(--ink);
-    --title-shadow: transparent;
+    --toast-success-bg: #33503C;
+    --toast-error-bg: #5A3434;
+    --toast-info-bg: #2E4A5C;
+    --toast-warning-bg: #54481F;
+    --toast-ink: #F2EEE7;
   }
 
   * { box-sizing: border-box; }
@@ -139,9 +111,10 @@
 
   body{
     background: var(--bg);
-    background-image: var(--bg-ambient);
+    background-image: radial-gradient(circle, var(--bg-dot) 1.5px, transparent 1.5px);
+    background-size: 22px 22px;
     background-attachment: fixed;
-    font-family: 'Plus Jakarta Sans', 'Quicksand', sans-serif;
+    font-family: 'Quicksand', sans-serif;
     font-weight: 500;
     color: var(--ink);
     min-height: 100vh;
@@ -151,86 +124,89 @@
   .wrap{
     max-width: 640px;
     margin: 0 auto;
-    padding: clamp(16px, 3vw, 28px) clamp(16px, 3vw, 24px) 90px;
+    padding: clamp(16px, 3vw, 28px) clamp(16px, 3vw, 24px) 80px;
+    /* Pengaman anti-luber horizontal: pakai clip (BUKAN hidden) supaya
+       position:sticky (tabbar/topbar) tetap berfungsi. Mencegah teks
+       panjang tanpa spasi membuat halaman bisa digeser menyamping. */
     overflow-x: clip;
   }
 
   .topbar{
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 10px;
+    margin-bottom: 18px;
+    transition: background-color .2s ease;
   }
 
   .icon-btn{
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 40px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 17px;
     line-height: 1;
-    border-radius: 14px;
-    background: var(--card-glass);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: var(--border);
-    color: var(--ink);
+    border-radius: 50%;
+    background: var(--card-light);
+    border: 3px solid var(--ink);
+    box-shadow: 3px 3px 0 var(--shadow);
     cursor: pointer;
-    transition: transform .15s ease, background-color .15s ease, border-color .15s ease;
+    transition: transform .12s ease, box-shadow .12s ease, background-color .2s ease;
     user-select: none;
   }
-  .icon-btn:hover{ transform: translateY(-1px); background: var(--card-elevated); }
-  .icon-btn:active{ transform: translateY(0); }
 
-  #theme-toggle{ background: var(--primary-dim); color: var(--primary-bright); border-color: rgba(99,102,241,0.35); }
+  .icon-btn:hover{ transform: translateY(-2px) rotate(8deg); }
+  .icon-btn:active{ transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  #theme-toggle{ background: var(--blue); color: var(--on-accent); }
   #info-btn{
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 800;
-    background: var(--card-glass);
-    color: var(--ink);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    background: var(--yellow);
+    color: var(--on-accent);
   }
 
-  header{ text-align: center; margin-bottom: 26px; }
+  header{ text-align: center; margin-bottom: 30px; }
 
   /* ============================================================
-     TAB NAVIGASI + PANEL (Kinetic Panel)
-     Tabbar sticky glass di mobile, statis di desktop.
+     TAB NAVIGASI (Ambil / Cari / Tersimpan / Antrean)
+     Tiap fitur menempati "lahan" sendiri supaya satu halaman tidak
+     menumpuk semua panel. Sticky hanya di mobile — di desktop (di mana
+     topbar ikut sticky) tabbar dibiarkan statis supaya tidak berebut
+     posisi dengan topbar.
      ============================================================ */
   .tabbar{
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    padding: 8px 14px;
+    gap: 8px;
+    margin-bottom: 18px;
+    padding: 6px 10px;
     position: sticky;
-    top: 8px;
+    top: 0;
     z-index: 60;
-    background: var(--card-glass);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: var(--border);
+    background: var(--bg-translucent);
+    border: 3px solid var(--ink);
     border-radius: 999px;
-    box-shadow: var(--glow);
+    box-shadow: 4px 4px 0 var(--shadow);
   }
 
   .tab-arrow{
     flex-shrink: 0;
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 20px;
+    font-weight: 800;
     line-height: 1;
-    border-radius: 12px;
-    background: transparent;
-    border: var(--border);
-    color: var(--ink);
+    padding: 0 0 3px;
+    border-radius: 50%;
+    background: var(--card-light);
+    box-shadow: 2px 2px 0 var(--shadow);
   }
-  .tab-arrow:active{ background: var(--primary-dim); color: var(--primary-bright); }
+  .tab-arrow:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
 
   .tab-current{
     flex: 1;
@@ -238,11 +214,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    padding: 2px 0;
   }
 
   #tab-current-name{
-    font-weight: 700;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
     font-size: 15px;
     line-height: 1.2;
   }
@@ -250,77 +228,71 @@
   .tab-dots{ display: flex; gap: 10px; }
 
   .tab-dot{
-    width: 10px;
-    height: 10px;
+    width: 14px;
+    height: 14px;
     padding: 0;
-    border-radius: 999px;
-    border: none;
-    background: rgba(148,163,184,0.35);
+    border-radius: 50%;
+    background: var(--card);
     cursor: pointer;
-    transition: background .15s, transform .15s;
   }
   .tab-dot.active{
-    background: var(--primary-bright);
-    width: 22px;
-    box-shadow: 0 0 10px rgba(99,102,241,0.6);
+    background: var(--pink-deep);
+    transform: scale(1.3);
   }
 
   .tab-page{ display: none; }
-  .tab-page.active{ display: block; animation: fade-in .22s ease; }
-
-  @keyframes fade-in{
-    from{ opacity: 0; transform: translateY(6px); }
-    to{ opacity: 1; transform: translateY(0); }
-  }
+  .tab-page.active{ display: block; animation: chip-in .2s ease; }
 
   .tab-hint{
     text-align: center;
-    padding: 34px 18px;
-    border: 1.5px dashed var(--outline);
-    border-radius: 18px;
+    padding: 30px 16px;
+    border: 3px dashed var(--outline);
+    border-radius: 20px;
     color: var(--ink-soft);
-    font-weight: 500;
-    font-size: 14px;
+    font-weight: 600;
+    font-size: 13.5px;
     line-height: 1.7;
   }
   h1{
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 800;
-    font-size: clamp(26px, 5vw, 34px);
-    letter-spacing: -0.02em;
-    margin: 0 0 4px;
-    color: var(--ink);
+    font-size: clamp(34px, 6vw, 54px);
+    letter-spacing: 0.5px;
+    margin: 0;
+    color: var(--title-color);
+    text-shadow: 3px 3px 0 var(--title-shadow);
+    transition: color .25s ease, text-shadow .25s ease;
   }
 
   button{
-    font-family: inherit;
+    font-family: 'Baloo 2', sans-serif;
     color: var(--ink);
-    background: var(--card-elevated);
-    border: var(--border);
+    background: var(--card);
+    border: 3px solid var(--ink);
     border-radius: 12px;
     cursor: pointer;
-    font-weight: 600;
-    transition: background-color .15s ease, border-color .15s ease, transform .08s ease;
+    transition: transform .08s ease, box-shadow .08s ease,
+                background-color .15s ease, filter .15s ease;
   }
 
   button:focus-visible,
   input:focus-visible{
-    outline: 2px solid var(--primary-bright);
+    outline: 3px solid var(--blue-strong);
     outline-offset: 2px;
   }
 
   .panel{
-    background: var(--card-glass);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: var(--border);
+    background: var(--card-light);
+    border: 3px solid var(--ink);
     border-radius: 20px;
     padding: 20px;
-    box-shadow: var(--glow);
-    margin-bottom: 24px;
+    box-shadow: 6px 6px 0 var(--shadow);
+    margin-bottom: 26px;
     transition: background-color .25s ease;
   }
 
   .panel-label{
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 700;
     font-size: 14px;
     margin: 0;
@@ -331,14 +303,14 @@
 
   .panel-label::before{
     content: '';
-    width: 8px; height: 8px;
+    width: 10px; height: 10px;
     border-radius: 50%;
-    background: var(--primary-bright);
-    box-shadow: 0 0 10px rgba(99,102,241,0.6);
+    background: var(--pink);
+    border: 2px solid var(--ink);
     flex-shrink: 0;
   }
 
-  .panel-label-row{ margin: 0 0 12px 2px; }
+  .panel-label-row{ margin: 0 0 10px 2px; }
 
   .input-row{ display: flex; gap: 10px; }
 
@@ -347,73 +319,82 @@
     min-width: 0;
     font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
-    padding: 14px;
-    border: var(--border);
+    padding: 13px 14px;
+    border: 3px solid var(--ink);
     border-radius: 12px;
     background: var(--bg);
     color: var(--ink);
     outline: none;
-    transition: border-color .15s ease, box-shadow .15s ease;
+    transition: background-color .15s ease, box-shadow .15s ease;
   }
 
   .input-row input:focus{
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-dim);
+    background: var(--card-light);
+    box-shadow: 0 0 0 3px var(--blue);
   }
 
-  .input-row input::placeholder{ color: var(--ink-faint); }
+  .input-row input::placeholder{ color: var(--ink-soft); }
 
   .mini-toggle{
     display: flex; align-items: center; gap: 8px;
-    margin-top: 12px; cursor: pointer; user-select: none;
+    margin-top: 10px; cursor: pointer; user-select: none;
     font-size: 12px; color: var(--ink-soft);
   }
   .mini-toggle input{ position: absolute; opacity: 0; pointer-events: none; }
   .mini-toggle-box{
-    width: 34px; height: 18px; border-radius: 999px; flex-shrink: 0;
-    border: var(--border); background: var(--card);
+    width: 30px; height: 17px; border-radius: 999px; flex-shrink: 0;
+    border: 3px solid var(--ink); background: var(--bg);
     position: relative; transition: background-color .15s ease;
   }
   .mini-toggle-box::after{
-    content: ''; position: absolute; top: 2px; left: 2px;
-    width: 12px; height: 12px; border-radius: 50%;
-    background: var(--ink-soft); transition: left .15s ease, background .15s;
+    content: ''; position: absolute; top: 1px; left: 1px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--ink); transition: left .15s ease;
   }
-  .mini-toggle input:checked + .mini-toggle-box{ background: var(--primary-dim); }
-  .mini-toggle input:checked + .mini-toggle-box::after{ left: 16px; background: var(--primary-bright); }
-  .mini-toggle input:focus-visible + .mini-toggle-box{ box-shadow: 0 0 0 3px var(--primary-dim); }
+  .mini-toggle input:checked + .mini-toggle-box{ background: var(--blue); }
+  .mini-toggle input:checked + .mini-toggle-box::after{ left: 14px; background: #fff; }
+  .mini-toggle input:focus-visible + .mini-toggle-box{ box-shadow: 0 0 0 3px var(--blue); }
   .mini-toggle-note{ opacity: .75; }
 
   .btn-fetch{
-    font-weight: 700;
+    font-weight: 800;
     font-size: 14px;
-    letter-spacing: 0.3px;
-    color: var(--ink-on-primary);
-    background: linear-gradient(180deg, var(--primary-bright), var(--primary));
-    padding: 14px 22px;
-    border: none;
-    border-radius: 999px;
-    box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+    letter-spacing: 1px;
+    color: #FFFFFF;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
+    background: var(--red-deep);
+    padding: 0 20px;
+    box-shadow: 4px 4px 0 var(--ink);
     white-space: nowrap;
   }
-  .btn-fetch:hover{ transform: translateY(-1px); box-shadow: 0 6px 26px rgba(99,102,241,0.45); filter: brightness(1.06); }
-  .btn-fetch:active{ transform: translateY(0); }
+
+  .btn-fetch:hover{
+    transform: translate(-1px,-1px);
+    box-shadow: 5px 5px 0 var(--ink);
+    filter: brightness(1.06);
+  }
+
+  .btn-fetch:active{
+    transform: translate(3px,3px);
+    box-shadow: 1px 1px 0 var(--ink);
+  }
 
   .btn-reset{
     flex-shrink: 0;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 13px;
-    color: var(--ink);
-    background: var(--card-elevated);
-    border: var(--border);
-    padding: 14px 18px;
-    border-radius: 999px;
+    letter-spacing: 0.5px;
+    background: var(--card);
+    padding: 0 16px;
+    box-shadow: 4px 4px 0 var(--shadow);
   }
-  .btn-reset:hover{ background: var(--primary-dim); color: var(--primary-bright); }
 
-  .input-row input:disabled{ opacity: .5; }
+  .btn-reset:hover{ background: var(--yellow); color: var(--on-accent); }
+  .btn-reset:active{ transform: translate(3px,3px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  .input-row input:disabled{ opacity: .6; }
   .btn-fetch:disabled, .btn-reset:disabled{
-    opacity: .4; cursor: not-allowed;
+    opacity: .5; cursor: not-allowed; transform: none !important;
   }
 
   .input-row input.shake{ animation: shake-anim .4s ease; }
@@ -429,53 +410,57 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 0 4px 14px;
+    margin: 0 2px 12px;
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 700;
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .queue-count{
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--ink-on-primary);
-    background: var(--primary);
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--on-accent);
+    background: var(--pink);
+    border: 2.5px solid var(--ink);
     border-radius: 999px;
-    padding: 3px 14px;
+    padding: 3px 12px;
   }
 
   .chapter-list{
     display: grid;
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: 12px;
   }
 
   .empty-state{
     text-align: center;
     padding: 44px 20px;
-    border: 1.5px dashed var(--outline);
-    border-radius: 18px;
+    border: 3px dashed var(--outline);
+    border-radius: 20px;
     color: var(--ink-soft);
-    font-weight: 500;
+    font-weight: 600;
     font-size: 14px;
     line-height: 1.7;
+    transition: border-color .25s ease;
   }
 
   .empty-state .empty-emoji{
     display: block;
-    font-size: 32px;
+    font-size: 34px;
     margin-bottom: 10px;
   }
 
   .chip-row{
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    background: var(--card);
-    border: var(--border);
-    border-radius: 18px;
+    gap: 10px;
+    background: var(--card-light);
+    border: 3px solid var(--ink);
+    border-radius: 16px;
     padding: 16px 18px;
-    transition: border-color .15s ease, transform .12s ease;
+    box-shadow: 4px 4px 0 var(--shadow);
+    transition: transform .12s ease, box-shadow .12s ease, background-color .25s ease;
     animation: chip-in .25s ease;
   }
 
@@ -484,20 +469,29 @@
     to{ opacity: 1; transform: translateY(0); }
   }
 
+  /* Rotasi chip hanya di mobile < 1024px, sangat kecil (<=0.3deg). */
+  @media (max-width: 1023px){
+    .chip-row:nth-child(3n+1){ transform: rotate(-0.25deg); }
+    .chip-row:nth-child(3n+2){ transform: rotate(0.2deg); }
+    .chip-row:nth-child(3n){ transform: rotate(-0.15deg); }
+  }
+
   .chip-row:hover{
-    transform: translateY(-2px);
-    border-color: rgba(99,102,241,0.45);
+    transform: rotate(0deg) translateY(-2px);
+    box-shadow: 4px 6px 0 var(--shadow);
   }
 
   .chip-head{ display: flex; align-items: center; gap: 10px; }
 
   .chip-num{
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 800;
     font-size: 13px;
-    color: var(--ink-on-primary);
-    background: var(--primary);
+    color: var(--on-accent);
+    background: var(--yellow);
+    border: 2.5px solid var(--ink);
     border-radius: 999px;
-    padding: 4px 12px;
+    padding: 4px 11px;
     white-space: nowrap;
     flex-shrink: 0;
   }
@@ -505,25 +499,25 @@
   .chip-badge{
     font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
-    font-size: 10px;
-    letter-spacing: 0.8px;
+    font-size: 10.5px;
+    letter-spacing: 1px;
     text-transform: uppercase;
-    color: var(--ink);
-    background: var(--card-elevated);
-    border: var(--border);
+    color: var(--on-accent);
+    background: var(--blue);
+    border: 2px solid var(--ink);
     border-radius: 6px;
     padding: 3px 9px;
     flex-shrink: 0;
   }
 
-  .chip-badge.jjaptoon{ color: #f0abfc; background: rgba(217,70,239,0.14); }
-  .chip-badge.jjabtoon{ color: var(--error); background: var(--error-dim); }
-  .chip-badge.goodtoon{ color: var(--primary-bright); background: var(--primary-dim); }
-  .chip-badge.baozimh{ color: var(--warning); background: var(--warning-dim); }
-  .chip-badge.wmanhua{ color: #c4b5fd; background: rgba(139,92,246,0.16); }
-  .chip-badge.koudaimh{ color: var(--success); background: var(--success-dim); }
-  .chip-badge.rumanhua{ color: var(--primary-bright); background: var(--primary-dim); }
-  .chip-badge.manwang{ color: #f59e0b; background: var(--warning-dim); }
+  .chip-badge.jjaptoon{ background: var(--pink); }
+  .chip-badge.jjabtoon{ background: var(--red); }
+  .chip-badge.goodtoon{ background: var(--blue-strong); }
+   .chip-badge.baozimh{ background: var(--yellow); }
+  .chip-badge.wmanhua{ background: var(--purple); }
+  .chip-badge.koudaimh{ background: var(--green); }
+  .chip-badge.rumanhua{ background: var(--pink-deep); }
+  .chip-badge.manwang{ background: var(--yellow-deep); }
 
   .chip-status{
     margin-left: auto;
@@ -535,18 +529,19 @@
     flex-shrink: 0;
   }
 
-  .chip-status.done{ color: var(--success); font-weight: 700; }
-  .chip-status.active{ color: var(--primary-bright); font-weight: 700; }
-  .chip-status.error{ color: var(--error); font-weight: 700; }
+  .chip-status.done{ color: var(--green-ink); font-weight: 700; }
+  .chip-status.active{ color: var(--red-deep); font-weight: 700; }
+  .chip-status.error{ color: var(--red-ink); font-weight: 700; }
 
-  .chip-row.error{ border-color: rgba(248,113,113,0.5); }
+  .chip-row.error{ border-color: var(--red-deep); }
 
   .chip-body{ min-width: 0; }
 
   .chip-comic-title{
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 800;
-    font-size: 16px;
-    line-height: 1.35;
+    font-size: 17px;
+    line-height: 1.3;
     margin: 0 0 2px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -558,7 +553,7 @@
   .chip-chapter-title{
     font-weight: 600;
     font-size: 13.5px;
-    color: var(--ink-soft);
+    color: var(--red-deep);
     margin: 0 0 4px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -575,28 +570,31 @@
 
   .btn-dl-mini{
     flex-shrink: 0;
-    font-weight: 700;
+    font-weight: 800;
     font-size: 13px;
-    color: var(--ink-on-primary);
-    background: linear-gradient(180deg, #4ade80, var(--success));
+    letter-spacing: 0.5px;
+    color: #FFFFFF;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+    background: var(--green-deep);
     border: none;
-    border-radius: 10px;
-    padding: 10px 18px;
+    border-radius: 8px;
+    padding: 9px 16px;
     cursor: pointer;
-    box-shadow: 0 4px 16px rgba(52,211,153,0.25);
+    box-shadow: 2px 2px 0 var(--ink);
     width: 100%;
   }
-  .btn-dl-mini:hover{ filter: brightness(1.06); }
-  .btn-dl-mini:active{ transform: translateY(1px); }
+  .btn-dl-mini:hover{ transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--ink); }
+  .btn-dl-mini:active{ transform: translate(2px,2px); box-shadow: 0 0 0 var(--ink); }
   .btn-dl-mini:disabled{
-    opacity: .45; cursor: not-allowed;
+    opacity: .5; cursor: not-allowed;
     transform: none !important;
+    box-shadow: 2px 2px 0 var(--ink) !important;
   }
 
   .chip-thumbs{
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-    gap: 8px;
+    gap: 6px;
     margin-top: 4px;
   }
 
@@ -604,9 +602,9 @@
     width: 100%;
     aspect-ratio: 3/4;
     object-fit: cover;
-    border: var(--border);
-    border-radius: 8px;
-    background: var(--card-elevated);
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    background: var(--card);
   }
 
   .chip-thumbs-more{
@@ -614,8 +612,8 @@
     align-items: center;
     justify-content: center;
     aspect-ratio: 3/4;
-    border: 1.5px dashed var(--outline);
-    border-radius: 8px;
+    border: 2px dashed var(--outline);
+    border-radius: 6px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     color: var(--ink-soft);
@@ -623,14 +621,15 @@
 
   .progress-mini{
     flex: 1;
-    height: 6px;
-    background: var(--card-elevated);
+    height: 8px;
+    background: var(--bg);
+    border: 2px solid var(--ink);
     border-radius: 999px;
     overflow: hidden;
   }
   .progress-mini > div{
     height: 100%;
-    background: linear-gradient(90deg, var(--primary), var(--primary-bright));
+    background: var(--blue-strong);
     transition: width .2s ease;
   }
 
@@ -652,18 +651,15 @@
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    background: var(--card-glass-strong);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    background: var(--toast-info-bg);
     color: var(--toast-ink);
-    border: var(--border);
-    border-left: 3px solid var(--info);
+    border: 3px solid var(--ink);
     border-radius: 14px;
-    padding: 12px 14px;
-    box-shadow: var(--glow);
-    font-weight: 500;
+    padding: 12px 14px 14px;
+    box-shadow: 4px 4px 0 var(--shadow);
+    font-weight: 600;
     font-size: 13.5px;
-    line-height: 1.5;
+    line-height: 1.45;
     position: relative;
     overflow: hidden;
     animation: toast-in .3s cubic-bezier(.2,.9,.3,1.2);
@@ -677,10 +673,10 @@
     to{ opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  .toast.success{ border-left-color: var(--success); }
-  .toast.error{ border-left-color: var(--error); }
-  .toast.info{ border-left-color: var(--info); }
-  .toast.warning{ border-left-color: var(--warning); }
+  .toast.success{ background: var(--toast-success-bg); }
+  .toast.error{ background: var(--toast-error-bg); }
+  .toast.info{ background: var(--toast-info-bg); }
+  .toast.warning{ background: var(--toast-warning-bg); }
 
   .toast-icon{
     flex-shrink: 0;
@@ -688,11 +684,12 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 800;
     font-size: 14px;
-    border: var(--border);
-    border-radius: 8px;
-    background: var(--card-elevated);
+    border: 2.5px solid var(--ink);
+    border-radius: 50%;
+    background: var(--card-light);
     color: var(--ink);
   }
 
@@ -702,7 +699,7 @@
     flex-shrink: 0;
     border: none;
     background: transparent;
-    color: var(--ink-soft);
+    color: inherit;
     font-size: 16px;
     font-weight: 800;
     line-height: 1;
@@ -711,15 +708,15 @@
     opacity: .7;
     border-radius: 6px;
   }
-  .toast-close:hover{ opacity: 1; color: var(--ink); }
+  .toast-close:hover{ opacity: 1; }
 
   .toast-bar{
     position: absolute;
     left: 0; bottom: 0;
-    height: 3px;
+    height: 4px;
     width: 100%;
-    background: var(--info);
-    opacity: .4;
+    background: var(--ink);
+    opacity: .35;
     transform-origin: left;
     animation: toast-bar linear forwards;
   }
@@ -733,14 +730,13 @@
     position: fixed;
     inset: 0;
     background: var(--overlay);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(2px);
     display: flex;
     align-items: flex-end;
     justify-content: center;
     opacity: 0;
     pointer-events: none;
-    transition: opacity .18s ease;
+    transition: opacity .15s ease;
     z-index: 200;
   }
 
@@ -749,21 +745,20 @@
   .info-sheet{
     width: 100%;
     max-width: 640px;
-    background: var(--card-glass-strong);
-    backdrop-filter: blur(22px);
-    -webkit-backdrop-filter: blur(22px);
-    border: var(--border);
+    background: var(--card-light);
+    border: 3px solid var(--ink);
     border-bottom: none;
     border-radius: 22px 22px 0 0;
     padding: 24px 20px 28px;
-    box-shadow: var(--glow);
+    box-shadow: 0 -6px 0 var(--shadow);
     transform: translateY(8px);
-    transition: transform .18s ease;
+    transition: transform .15s ease, background-color .25s ease;
   }
 
   .info-overlay.open .info-sheet{ transform: translateY(0); }
 
   .info-sheet-title{
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 700;
     font-size: 18px;
     margin-bottom: 6px;
@@ -772,7 +767,7 @@
   .info-sheet-desc{
     color: var(--ink-soft);
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     margin: 0 0 16px;
   }
 
@@ -784,50 +779,50 @@
   }
 
   .site-chip{
-    background: var(--card-elevated);
-    color: var(--ink);
-    border: var(--border);
+    background: var(--blue);
+    color: var(--on-accent);
+    border: 2.5px solid var(--ink);
     border-radius: 999px;
-    padding: 8px 16px;
+    padding: 7px 15px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
+    box-shadow: 2px 2px 0 var(--shadow);
   }
 
-  .site-chip:nth-child(1){ background: var(--primary-dim); color: var(--primary-bright); border-color: rgba(99,102,241,0.4); }
-  .site-chip:nth-child(2){ background: var(--success-dim); color: var(--success); border-color: rgba(52,211,153,0.4); }
-  .site-chip:nth-child(3){ background: rgba(248,113,113,0.14); color: var(--error); border-color: rgba(248,113,113,0.4); }
-  .site-chip:nth-child(4){ background: var(--warning-dim); color: var(--warning); border-color: rgba(251,191,36,0.4); }
-  .site-chip:nth-child(5){ background: rgba(6,182,212,0.14); color: var(--tertiary); border-color: rgba(6,182,212,0.4); }
-  .site-chip:nth-child(6){ background: var(--info-dim); color: var(--info); border-color: rgba(96,165,250,0.4); }
-  .site-chip:nth-child(7){ background: rgba(217,70,239,0.14); color: #f0abfc; border-color: rgba(217,70,239,0.4); }
+  .site-chip:nth-child(2){ background: var(--pink); }
+  .site-chip:nth-child(3){ background: var(--blue); }
+  .site-chip:nth-child(4){ background: var(--purple); }
+  .site-chip:nth-child(5){ background: var(--green); }
+  .site-chip:nth-child(7){ background: var(--yellow); }
 
   .btn-close{
     width: 100%;
     font-weight: 700;
     font-size: 14px;
-    background: var(--card);
-    border: var(--border);
+    background: var(--bg);
     padding: 12px;
+    box-shadow: 3px 3px 0 var(--shadow);
   }
-  .btn-close:active{ transform: translateY(1px); }
+  .btn-close:active{ transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--shadow); }
 
   /* ============================================================
-     SERIES CHAPTER PICKER (modal, glass)
+     SERIES CHAPTER PICKER (modal pilih chapter dari URL series)
+     Memakai pola visual yang sama dengan .info-overlay/.info-sheet,
+     tapi kontennya butuh tinggi lebih besar + scroll karena daftar
+     chapter bisa berjumlah ratusan.
      ============================================================ */
   .series-sheet{
     width: 100%;
     max-width: 640px;
     max-height: 85vh;
-    background: var(--card-glass-strong);
-    backdrop-filter: blur(22px);
-    -webkit-backdrop-filter: blur(22px);
-    border: var(--border);
+    background: var(--card-light);
+    border: 3px solid var(--ink);
     border-bottom: none;
     border-radius: 22px 22px 0 0;
-    padding: 20px;
-    box-shadow: var(--glow);
+    padding: 20px 20px 16px;
+    box-shadow: 0 -6px 0 var(--shadow);
     transform: translateY(8px);
-    transition: transform .18s ease;
+    transition: transform .15s ease, background-color .25s ease;
     display: flex;
     flex-direction: column;
   }
@@ -835,6 +830,7 @@
   .info-overlay.open .series-sheet{ transform: translateY(0); }
 
   .series-sheet-title{
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 700;
     font-size: 17px;
     margin-bottom: 2px;
@@ -844,7 +840,7 @@
   .series-sheet-count{
     color: var(--ink-soft);
     font-size: 12.5px;
-    font-weight: 500;
+    font-weight: 600;
     margin: 0 0 14px;
   }
 
@@ -857,41 +853,38 @@
   }
 
   .series-range-row input[type="number"]{
-    width: 70px;
-    padding: 9px 10px;
-    border: var(--border);
+    width: 68px;
+    padding: 8px 10px;
+    border: 2.5px solid var(--ink);
     border-radius: 10px;
-    background: var(--bg);
+    background: var(--card);
     color: var(--ink);
     font-family: inherit;
     font-weight: 600;
     font-size: 13px;
     text-align: center;
-    outline: none;
   }
 
   .series-range-row input[type="number"]:focus{
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-dim);
+    outline: none;
+    border-color: var(--blue-strong);
   }
 
   .series-range-label{
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--ink-soft);
   }
 
   .btn-range-apply{
     font-size: 12.5px;
     font-weight: 700;
-    padding: 9px 14px;
-    background: var(--primary);
-    color: var(--ink-on-primary);
-    border: none;
-    border-radius: 999px;
+    padding: 8px 12px;
+    background: var(--blue);
+    box-shadow: 2px 2px 0 var(--shadow);
     white-space: nowrap;
   }
-  .btn-range-apply:active{ transform: translateY(1px); }
+  .btn-range-apply:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
 
   .series-bulk-row{
     display: flex;
@@ -902,18 +895,17 @@
   .btn-bulk{
     flex: 1;
     font-size: 12.5px;
-    font-weight: 600;
-    padding: 9px;
-    background: var(--card-elevated);
-    border: var(--border);
-    border-radius: 10px;
+    font-weight: 700;
+    padding: 8px;
+    background: var(--card);
+    box-shadow: 2px 2px 0 var(--shadow);
   }
-  .btn-bulk:active{ transform: translateY(1px); }
+  .btn-bulk:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
 
   .series-chapter-list{
     flex: 1;
     overflow-y: auto;
-    border: var(--border);
+    border: 2.5px solid var(--ink);
     border-radius: 14px;
     background: var(--bg);
     margin-bottom: 14px;
@@ -925,22 +917,22 @@
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    border-bottom: 1px solid rgba(148,163,184,0.12);
+    border-bottom: 1.5px solid var(--card);
     cursor: pointer;
   }
   .series-chapter-item:last-child{ border-bottom: none; }
-  .series-chapter-item:active{ background: var(--card-elevated); }
+  .series-chapter-item:active{ background: var(--card); }
 
   .series-chapter-item input[type="checkbox"]{
     width: 18px;
     height: 18px;
     flex-shrink: 0;
-    accent-color: var(--primary);
+    accent-color: var(--blue-strong);
   }
 
   .series-chapter-item-title{
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -954,7 +946,7 @@
 
   .series-sheet-footer .btn-close{
     flex: 1;
-    background: var(--card);
+    background: var(--bg);
   }
 
   .btn-series-confirm{
@@ -962,25 +954,24 @@
     font-weight: 700;
     font-size: 14px;
     padding: 12px;
-    background: linear-gradient(180deg, #4ade80, var(--success));
-    color: var(--ink-on-primary);
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 4px 18px rgba(52,211,153,0.3);
+    background: var(--green);
+    box-shadow: 3px 3px 0 var(--shadow);
   }
-  .btn-series-confirm:active{ transform: translateY(1px); }
-  .btn-series-confirm:disabled{ opacity: .4; cursor: not-allowed; }
+  .btn-series-confirm:active{ transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--shadow); }
+  .btn-series-confirm:disabled{ opacity: .5; cursor: not-allowed; }
 
   .series-loading{
     text-align: center;
     padding: 40px 20px;
     color: var(--ink-soft);
-    font-weight: 500;
+    font-weight: 600;
     font-size: 13.5px;
   }
 
   /* ============================================================
-     CARI JUDUL + SERIES TERSIMPAN
+     CARI JUDUL + SERIES TERSIMPAN (fitur baru)
+     Memakai token visual yang sama (panel, chip, badge) supaya
+     menyatu dengan tema yang sudah ada.
      ============================================================ */
   .search-sources{
     display: flex;
@@ -991,19 +982,14 @@
 
   .search-chip{
     font-size: 12.5px;
-    font-weight: 600;
-    padding: 8px 14px;
-    background: var(--card-elevated);
-    border: var(--border);
+    font-weight: 700;
+    padding: 7px 14px;
+    background: var(--card);
+    box-shadow: 2px 2px 0 var(--shadow);
     border-radius: 999px;
-    color: var(--ink);
   }
-  .search-chip:active{ transform: translateY(1px); }
-  .search-chip.active{
-    background: var(--primary-dim);
-    color: var(--primary-bright);
-    border-color: rgba(99,102,241,0.5);
-  }
+  .search-chip:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
+  .search-chip.active{ background: var(--pink); color: var(--on-accent); }
 
   .search-results{
     display: flex;
@@ -1018,8 +1004,8 @@
     display: flex;
     gap: 12px;
     align-items: center;
-    background: var(--card);
-    border: var(--border);
+    background: var(--bg);
+    border: 2.5px solid var(--ink);
     border-radius: 14px;
     padding: 10px 12px;
   }
@@ -1028,9 +1014,9 @@
     width: 48px;
     height: 64px;
     object-fit: cover;
-    border: var(--border);
+    border: 2px solid var(--ink);
     border-radius: 8px;
-    background: var(--card-elevated);
+    background: var(--card);
     flex-shrink: 0;
   }
 
@@ -1041,7 +1027,7 @@
     align-items: center;
     justify-content: center;
     font-size: 20px;
-    border: 1.5px dashed var(--outline);
+    border: 2px dashed var(--outline);
     border-radius: 8px;
     color: var(--ink-soft);
     flex-shrink: 0;
@@ -1050,6 +1036,7 @@
   .search-item-body{ flex: 1; min-width: 0; }
 
   .search-item-title{
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 700;
     font-size: 14px;
     line-height: 1.3;
@@ -1068,7 +1055,7 @@
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--ink-soft);
   }
 
@@ -1076,19 +1063,17 @@
     flex-shrink: 0;
     font-size: 12.5px;
     font-weight: 700;
-    padding: 9px 16px;
-    background: var(--primary);
-    color: var(--ink-on-primary);
-    border: none;
-    border-radius: 999px;
+    padding: 8px 14px;
+    background: var(--green);
+    box-shadow: 2px 2px 0 var(--shadow);
   }
-  .btn-pick:active{ transform: translateY(1px); }
+  .btn-pick:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
 
   .search-hint{
     text-align: center;
     padding: 18px 12px;
     color: var(--ink-soft);
-    font-weight: 500;
+    font-weight: 600;
     font-size: 13px;
     line-height: 1.6;
   }
@@ -1098,16 +1083,23 @@
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+    /* min-width:0 WAJIB di kartu ini sendiri (bukan cuma di elemen dalam):
+       .saved-row adalah grid-item yang minimum-nya = konten terpanjang.
+       Tanpa ini, satu judul slug tanpa spasi memaksa seluruh kartu + daftar
+       lebih lebar dari layar (tombol Hapus terpotong). */
     min-width: 0;
-    background: var(--card);
-    border: var(--border);
-    border-radius: 16px;
-    padding: 12px 14px;
+    background: var(--card-light);
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    padding: 10px 12px;
+    box-shadow: 4px 4px 0 var(--shadow);
     animation: chip-in .25s ease;
   }
 
   .saved-row-body{ min-width: 0; flex: 1; }
 
+  /* Baris atas kartu: cover + teks berdampingan (cover 44px agar kartu
+     tetap ramping di HP). */
   .saved-top{
     display: flex;
     gap: 10px;
@@ -1119,9 +1111,9 @@
     width: 44px;
     height: 58px;
     object-fit: cover;
-    border: var(--border);
+    border: 2px solid var(--ink);
     border-radius: 8px;
-    background: var(--card-elevated);
+    background: var(--card);
     flex-shrink: 0;
   }
 
@@ -1132,12 +1124,16 @@
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    border: 1.5px dashed var(--outline);
+    border: 2px dashed var(--outline);
     border-radius: 8px;
     color: var(--ink-soft);
     flex-shrink: 0;
   }
 
+  /* Semua lapis teks kartu simpanan WAJIB bisa menyusut (min-width:0) dan
+     memenggal kata super-panjang (overflow-wrap:anywhere) — kalau satu saja
+     terlewat, URL/slug tanpa spasi memaksa kartu lebih lebar dari layar dan
+     halaman jadi bisa digeser/zoom menyamping di Chrome HP. */
   .saved-row-body,
   .saved-row-sub,
   .saved-row-title,
@@ -1146,6 +1142,7 @@
   .saved-row-title{ overflow-wrap: anywhere; }
 
   .saved-row-title{
+    font-family: 'Baloo 2', sans-serif;
     font-weight: 700;
     font-size: 14px;
     line-height: 1.35;
@@ -1165,6 +1162,8 @@
 
   .saved-row-sub .chip-badge{ flex-shrink: 0; }
 
+  /* Tombol aksi selalu di baris sendiri selebar kartu (tidak lagi
+     berdesakan dengan judul + URL dalam satu baris) — lega di HP. */
   .saved-row-actions{
     display: flex;
     gap: 8px;
@@ -1172,49 +1171,46 @@
 
   .btn-open{
     flex: 1;
-    min-height: 38px;
+    min-height: 36px;
     font-size: 12.5px;
     font-weight: 700;
-    padding: 8px 14px;
-    background: var(--primary);
-    color: var(--ink-on-primary);
-    border: none;
-    border-radius: 999px;
+    padding: 6px 14px;
+    background: var(--blue);
+    box-shadow: 2px 2px 0 var(--shadow);
   }
-  .btn-open:active{ transform: translateY(1px); }
+  .btn-open:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
 
   .btn-del{
     flex-shrink: 0;
-    min-height: 38px;
+    min-height: 36px;
     font-size: 12.5px;
-    font-weight: 700;
-    padding: 8px 16px;
-    background: var(--card-elevated);
-    border: var(--border);
-    border-radius: 999px;
-    color: var(--ink);
+    font-weight: 800;
+    padding: 6px 16px;
+    background: var(--card);
+    box-shadow: 2px 2px 0 var(--shadow);
   }
-  .btn-del:hover{ background: var(--error-dim); color: var(--error); border-color: rgba(248,113,113,0.4); }
-  .btn-del:active{ transform: translateY(1px); }
+  .btn-del:hover{ background: var(--red); color: #FFFFFF; text-shadow: 1px 1px 0 rgba(0,0,0,0.2); }
+  .btn-del:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
 
   .btn-save-series{
     width: 100%;
     font-size: 13px;
-    font-weight: 700;
-    padding: 11px;
-    color: var(--ink-on-primary);
-    background: var(--primary);
-    border: none;
-    border-radius: 12px;
+    font-weight: 800;
+    padding: 10px;
+    /* Teks gelap eksplisit (jangan ikut var(--ink)): di mode gelap --ink
+       itu terang sehingga tulisan di atas kuning jadi pudar tidak terbaca. */
+    color: #3A3733;
+    background: var(--yellow);
+    box-shadow: 2px 2px 0 var(--shadow);
     margin-bottom: 12px;
   }
-  .btn-save-series:active{ transform: translateY(1px); }
+  .btn-save-series:active{ transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--shadow); }
 
   footer{
     text-align: center;
     margin-top: 44px;
-    color: var(--ink-faint);
-    font-weight: 500;
+    color: var(--ink-soft);
+    font-weight: 600;
     font-size: 12.5px;
   }
 
@@ -1251,18 +1247,22 @@
       padding: 14px 24px 10px;
       background: transparent;
     }
+
+    /* Saat sudah di-scroll, topbar dapat latar semi-transparan supaya
+       kartu chapter yang lewat di belakangnya tidak ikut terlihat.
+       Tidak pakai backdrop-filter (blur) karena itulah yang membuat
+       dot terlihat kabur/hilang. */
     .topbar.scrolled{
-      background: var(--card-glass);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      background: var(--bg-translucent);
     }
 
-    .panel{ padding: 24px; }
+    .panel{ padding: 26px; border-radius: 24px; box-shadow: 8px 8px 0 var(--shadow); }
+    .panel{ max-width: 760px; margin-left: auto; margin-right: auto; }
     .input-row input{ font-size: 14px; padding: 15px 16px; }
-    .btn-fetch{ font-size: 15px; padding: 15px 28px; }
-    .btn-reset{ font-size: 14px; padding: 15px 20px; }
+    .btn-fetch{ font-size: 15px; padding: 0 28px; }
+    .btn-reset{ font-size: 14px; padding: 0 20px; }
 
-    .chip-row{ padding: 18px; gap: 14px; }
+    .chip-row{ padding: 15px 18px; gap: 14px; }
     .chip-num{ font-size: 14px; padding: 5px 13px; }
     .chip-comic-title{ font-size: 18px; }
     .chip-status{ font-size: 12px; }
@@ -1278,9 +1278,9 @@
     .info-overlay{ align-items: center; }
     .info-sheet{
       max-width: 480px;
-      border-bottom: var(--border);
+      border-bottom: 3px solid var(--ink);
       border-radius: 22px;
-      box-shadow: var(--glow);
+      box-shadow: 8px 8px 0 var(--shadow);
       transform: translateY(12px) scale(.97);
     }
     .info-overlay.open .info-sheet{ transform: translateY(0) scale(1); }
@@ -1288,30 +1288,35 @@
     .series-sheet{
       max-width: 520px;
       max-height: 78vh;
-      border-bottom: var(--border);
+      border-bottom: 3px solid var(--ink);
       border-radius: 22px;
-      box-shadow: var(--glow);
+      box-shadow: 8px 8px 0 var(--shadow);
       transform: translateY(12px) scale(.97);
     }
     .info-overlay.open .series-sheet{ transform: translateY(0) scale(1); }
 
     .icon-btn{ width: 44px; height: 44px; font-size: 19px; }
+
+    /* Kurangi rotasi chip di tablet/desktop — hanya di mobile kecil. */
+    .chip-row:nth-child(3n+1){ transform: rotate(-0.15deg); }
+    .chip-row:nth-child(3n+2){ transform: rotate(0.1deg); }
+    .chip-row:nth-child(3n){ transform: rotate(-0.05deg); }
   }
 
   @media (min-width: 1024px){
-    .wrap{ max-width: 1080px; padding-top: 36px; }
+    .wrap{ max-width: 980px; padding-top: 36px; }
 
-    header{ margin-bottom: 40px; }
+    header{ margin-bottom: 34px; }
 
     .panel{
-      max-width: 820px;
+      max-width: 720px;
       margin-left: auto;
       margin-right: auto;
-      margin-bottom: 34px;
+      margin-bottom: 30px;
     }
 
     .queue-head{
-      max-width: 980px;
+      max-width: 880px;
       margin-left: auto;
       margin-right: auto;
       font-size: 17px;
@@ -1320,9 +1325,14 @@
     .chapter-list{
       grid-template-columns: 1fr 1fr;
       gap: 16px;
-      max-width: 980px;
+      max-width: 880px;
       margin: 0 auto;
     }
+
+    /* Matikan rotasi chip di desktop — terlalu ramai, biar rapi. */
+    .chip-row:nth-child(3n+1),
+    .chip-row:nth-child(3n+2),
+    .chip-row:nth-child(3n){ transform: none; }
 
     .empty-state{
       grid-column: 1 / -1;
@@ -1331,16 +1341,21 @@
   }
 
   @media (min-width: 1400px){
-    .wrap{ max-width: 1280px; }
+    .wrap{ max-width: 1180px; }
 
     .chapter-list{
       grid-template-columns: 1fr 1fr 1fr;
       gap: 18px;
-      max-width: 1200px;
+      max-width: 1100px;
+      margin: 0 auto;
     }
-    .queue-head{ max-width: 1200px; }
+    .queue-head{ max-width: 1100px; margin-left: auto; margin-right: auto; }
 
-    h1{ font-size: clamp(40px, 5vw, 52px); }
+    h1{ text-shadow: 4px 4px 0 var(--title-shadow); }
+
+    .chip-row:nth-child(3n+1),
+    .chip-row:nth-child(3n+2),
+    .chip-row:nth-child(3n){ transform: none; }
   }
 
   @media (min-width: 900px) and (max-height: 700px){
@@ -1352,9 +1367,9 @@
   @media (max-width: 640px){
     .input-row{ flex-direction: column; }
     .btn-fetch,
-    .btn-reset{ width: 100%; min-height: 48px; }
-    .btn-fetch{ padding: 13px; }
-    .btn-reset{ padding: 12px; }
+    .btn-reset{ width: 100%; min-height: 46px; }
+    .btn-fetch{ padding: 12px; }
+    .btn-reset{ padding: 10px; }
     .chip-status{ display: none; }
     .chip-row{ flex-wrap: wrap; }
   }
@@ -1367,7 +1382,7 @@
     .search-item-noimg{ width: 40px; height: 54px; }
     .search-item-title{ font-size: 13px; }
     .btn-pick{ padding: 8px 10px; font-size: 12px; }
-    .tab-arrow{ width: 34px; height: 34px; }
+    .tab-arrow{ width: 32px; height: 32px; }
     #tab-current-name{ font-size: 14px; }
   }
 
@@ -1391,8 +1406,7 @@
   </div>
 
   <header>
-    <h1>Trial <span style="color: var(--primary-bright)">Fetch</span></h1>
-    <p style="color: var(--ink-soft); font-weight: 500; font-size: 14px; margin: 2px 0 0">Unduh chapter komik dari berbagai source — cepat &amp; rapi.</p>
+    <h1>Trial Fetch</h1>
   </header>
 
   <nav class="tabbar" id="tabbar" aria-label="Navigasi fitur">
@@ -1416,8 +1430,8 @@
     </div>
     <div class="input-row">
       <input id="url-input" type="text" placeholder="https://contoh.com/chapter/12" autocomplete="off" spellcheck="false" />
-      <button type="button" class="btn-fetch" id="fetch-btn">Unduh</button>
-      <button type="button" class="btn-reset" id="reset-btn" aria-label="Reset dan kosongkan antrean">Reset</button>
+      <button type="button" class="btn-fetch" id="fetch-btn">FETCH</button>
+      <button type="button" class="btn-reset" id="reset-btn" aria-label="Reset dan kosongkan antrean">RESET</button>
     </div>
     <label class="mini-toggle" title="Potong banner atas/bawah 200px otomatis (khusus sumber Baozimh, OpenCV, 100% lokal)">
       <input type="checkbox" id="baozimh-crop-toggle" checked />
@@ -1432,20 +1446,18 @@
     <div class="panel-label-row">
       <p class="panel-label">Cari Judul</p>
     </div>
-    <div class="input-row" style="margin-bottom:12px">
+    <div class="input-row" style="margin-bottom:10px">
       <input id="search-input" type="text" placeholder="cth: 八千里路雲和月" autocomplete="off" spellcheck="false" />
-      <button type="button" class="btn-fetch" id="search-btn">Cari</button>
+      <button type="button" class="btn-fetch" id="search-btn">CARI</button>
     </div>
     <div class="search-sources" id="search-sources" role="group" aria-label="Sumber pencarian">
       <button type="button" class="search-chip active" data-source="all">Semua</button>
       <button type="button" class="search-chip" data-source="baozimh">Baozimh</button>
       <button type="button" class="search-chip" data-source="wmanhua">Wmanhua</button>
+      <!-- Jjabtoon DINONAKTIFKAN (Nov 2026): situs mati. Paste URL tetap bisa. -->
       <button type="button" class="search-chip" data-source="koudaimh">Koudaimh</button>
       <button type="button" class="search-chip" data-source="jjaptoon">Jjaptoon</button>
       <button type="button" class="search-chip" data-source="goodtoon">GoodToon</button>
-      <!-- Jjabtoon DINONAKTIFKAN: situs mati beberapa minggu terakhir (Nov 2026),
-           endpoint pencarian/seri tidak bisa diandalkan lagi. Tetap bisa
-           dipakai lewat "paste URL" di tab Ambil selama domain masih hidup. -->
       <!-- Rumanhua DINONAKTIFKAN sementara (chip disembunyikan): origin
         (192.3.216.80, tanpa CDN) memblokir IP egress Cloudflare Workers
         dengan 403 — terverifikasi dari worker production, padahal dari IP
@@ -1483,11 +1495,11 @@
   <div class="info-overlay" id="info-overlay">
     <div class="info-sheet" role="dialog" aria-modal="true" aria-label="Situs yang didukung">
       <div class="info-sheet-title">Situs yang didukung</div>
-      <p class="info-sheet-desc">Trial Fetch bisa mengambil chapter dari sumber berikut:</p>
+      <p class="info-sheet-desc">Saat ini Trial Fetch bisa mengambil chapter dari sumber berikut:</p>
       <div class="site-chips">
         <span class="site-chip">Baozimh</span>
         <span class="site-chip">Jjaptoon</span>
-        <span class="site-chip" title="Mati — hanya bisa dipakai lewat paste URL">Jjabtoon</span>
+        <span class="site-chip" title="Situs mati — masih bisa lewat paste URL">Jjabtoon</span>
         <span class="site-chip">Wmanhua</span>
         <span class="site-chip">Koudaimh</span>
         <span class="site-chip">GoodToon</span>
@@ -1533,10 +1545,8 @@
   <footer>Mochizhouuu © 2026</footer>
 
   <script>
-    // HARUS absolut (bukan '/proxy' mentah): buildProxyUrl/buildSearchUrl/
-    // buildRumanhuaImageUrl memakai `new URL(PROXY_URL)` yang melempar
-    // "Invalid URL" kalau diberi string relatif tanpa base — itulah sebabnya
-    // search & paste URL series terlihat "invalid" walau backend normal.
+    // HARUS absolut (bukan '/proxy' mentah): new URL(PROXY_URL) melempar
+    // "Invalid URL" kalau diberi string relatif tanpa base.
     const PROXY_URL = `${location.origin}/proxy`;
 
     // Domain default untuk sumber yang nomor domainnya suka berganti.
@@ -1682,11 +1692,14 @@
     }
 
     // ============================================================
-    // SCROLL-AWARE TOPBAR
+    // SCROLL-AWARE TOPBAR (perbaikan bug dot di desktop)
     // ------------------------------------------------------------
-    // Saat halaman masih di atas, topbar transparan. Setelah user
-    // menggulir, topbar diberi latar glass (--card-glass) supaya
-    // konten di belakangnya tidak menabrak tombol.
+    // Saat halaman di atas (scrollY kecil), topbar transparan supaya
+    // pola dot di body tetap terlihat jelas di sekitar tombol toggle.
+    // Setelah pengguna menggulir, topbar dapat latar semi-transparan
+    // (--bg-translucent) supaya kartu chapter yang lewat di belakang
+    // tidak menabrak tombol. Tidak pakai backdrop-filter blur karena
+    // blur-lah yang membuat dot terlihat kabur/hilang.
     // ============================================================
     const SCROLL_THRESHOLD = 8;
     let ticking = false;
@@ -2106,9 +2119,7 @@
     // di atas): keduanya origin memblokir IP egress Cloudflare dengan 403 —
     // untuk manwang khususnya hanya pada endpoint search (series & chapter
     // tetap jalan, jadi paste URL langsung masih bisa).
-    // Jjabtoon sengaja TIDAK ada di daftar: situsnya mati beberapa minggu
-    // terakhir (Nov 2026), endpoint pencarian tidak bisa diandalkan lagi.
-    // Alur "paste URL" di tab Ambil tetap tersedia selama domain hidup.
+    // Jjabtoon sengaja tidak ada: situs mati.
     const SEARCH_SOURCES = ['baozimh', 'wmanhua', 'koudaimh', 'jjaptoon', 'goodtoon'];
     const SEARCH_SOURCE_NAMES = { baozimh: 'Baozimh', wmanhua: 'Wmanhua', jjabtoon: 'Jjabtoon', koudaimh: 'Koudaimh', jjaptoon: 'Jjaptoon', goodtoon: 'GoodToon', rumanhua: 'Rumanhua', manwang: 'Manwang' };
     // State tab ditaruh di sini (awal, sebelum renderSavedSeries() dipanggil
@@ -3005,9 +3016,7 @@
           downloadReferer = new URL(targetUrl).origin + '/';
         } catch (e) { /* biarkan nilai config sebagai fallback */ }
       }
-      // Rumanhua (Nov 2026): gambar chapter di CDN numerik (dmw.546457.xyz dsb)
-      // menolak request tanpa Referer halaman chapter. Selalu pakai URL chapter
-      // lengkap sebagai referer, bukan origin + "/" — CDN memvalidasi path juga.
+      // Rumanhua (Nov 2026): CDN numerik memvalidasi path, jadi pakai URL chapter.
       if (source === 'rumanhua') {
         downloadReferer = targetUrl;
       }
