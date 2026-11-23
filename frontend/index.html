@@ -63,6 +63,9 @@
     --title-color: var(--ink);
     --title-shadow: var(--pink);
     --on-accent: #3A3733;
+    /* Teks di atas tombol pastel: gelap di KEDUA tema. --ink di dark theme
+       terang, dulu dipakai tombol -> teks nyaris tak terbaca (1.0-1.8:1). */
+    --on-pastel: #2A2724;
 
     --toast-success-bg: var(--green);
     --toast-error-bg: #F7C6C6;
@@ -129,6 +132,7 @@
     --shadow-red: 0 2px 10px rgba(232,93,93,0.3);
     --shadow-green: 0 2px 8px rgba(125,190,144,0.3);
     --on-primary: #FFFFFF;
+    --on-pastel: #2A2724;
     --cta-red: #A83232;
     --cta-green: #356B45;
     --toggle-knob: #FFFFFF;
@@ -786,21 +790,45 @@
     margin: 0 0 16px;
   }
 
-  .site-chips{
-    display: flex;
-    flex-wrap: wrap;
-    gap: 9px;
-    margin-bottom: 22px;
+  /* Daftar sumber: bukan kumpulan pill generik. Tiap baris=bukti cara
+     ambil data (API / HTML / +dekripsi) supaya sheet ini berguna, bukan
+     cuma daftar nama. Tetap tanpa kotak — pembatas tipis saja. */
+  .site-list{
+    list-style: none;
+    margin: 0 0 22px;
+    padding: 0;
   }
-
-  .site-chip{
-    background: var(--card);
-    color: var(--ink);
-    border: none;
-    border-radius: 999px;
-    padding: 7px 15px;
-    font-size: 13px;
-    font-weight: 600;
+  .site-row{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    padding: 8px 2px;
+    border-bottom: var(--border-soft);
+  }
+  .site-row:last-child{ border-bottom: none; }
+  .site-mark{
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--outline);
+  }
+  .site-mark.api{ background: var(--green-deep); }
+  .site-mark.html{ background: var(--blue-strong); }
+  .site-mark.crypto{ background: var(--purple-deep); }
+  .site-name{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .site-kind{
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .5px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
   }
 
 
@@ -887,6 +915,7 @@
   }
 
   .btn-range-apply{
+    color: var(--on-pastel);
     font-size: 12.5px;
     font-weight: 600;
     padding: 8px 12px;
@@ -895,6 +924,20 @@
     white-space: nowrap;
   }
   .btn-range-apply:active{ transform: translateY(1px); }
+
+  .series-sort-row{ margin-bottom: 12px; }
+  .btn-sort{
+    width: 100%;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink);
+    background: var(--card);
+    border: var(--border-soft);
+    box-shadow: none;
+    padding: 9px 12px;
+  }
+  .btn-sort:hover{ background: var(--card-light); }
+  .btn-sort:active{ transform: translateY(1px); }
 
   .series-bulk-row{
     display: flex;
@@ -961,6 +1004,7 @@
 
   .btn-series-confirm{
     flex: 2;
+    color: var(--on-pastel);
     font-weight: 700;
     font-size: 14px;
     padding: 12px;
@@ -1072,6 +1116,7 @@
 
   .btn-pick{
     flex-shrink: 0;
+    color: var(--on-pastel);
     font-size: 12.5px;
     font-weight: 700;
     padding: 8px 16px;
@@ -1182,6 +1227,7 @@
 
   .btn-open{
     flex: 1;
+    color: var(--on-pastel);
     min-height: 36px;
     font-size: 12.5px;
     font-weight: 600;
@@ -1205,6 +1251,7 @@
 
   .btn-save-series{
     width: 100%;
+    color: var(--on-pastel);
     font-size: 13px;
     font-weight: 700;
     padding: 10px;
@@ -1488,15 +1535,15 @@
   <div class="info-overlay" id="info-overlay">
     <div class="info-sheet" role="dialog" aria-modal="true" aria-label="Situs yang didukung">
       <div class="info-sheet-title">Situs yang didukung</div>
-      <p class="info-sheet-desc">Saat ini Trial Fetch bisa mengambil chapter dari sumber berikut:</p>
-      <div class="site-chips">
-        <span class="site-chip">Baozimh</span>
-        <span class="site-chip">Wmanhua</span>
-        <span class="site-chip">HipMH</span>
-        <span class="site-chip">GoodToon</span>
-        <span class="site-chip">Manwang</span>
-        <span class="site-chip">Rumanhua</span>
-      </div>
+      <p class="info-sheet-desc">Cari lewat tab Cari, atau tempel URL chapter langsung.</p>
+      <ul class="site-list">
+        <li class="site-row"><span class="site-mark api"></span><span class="site-name">Baozimh</span><span class="site-kind">API</span></li>
+        <li class="site-row"><span class="site-mark html"></span><span class="site-name">Wmanhua</span><span class="site-kind">HTML</span></li>
+        <li class="site-row"><span class="site-mark api"></span><span class="site-name">HipMH</span><span class="site-kind">API</span></li>
+        <li class="site-row"><span class="site-mark html"></span><span class="site-name">GoodToon</span><span class="site-kind">HTML</span></li>
+        <li class="site-row"><span class="site-mark crypto"></span><span class="site-name">Manwang</span><span class="site-kind">HTML + AES</span></li>
+        <li class="site-row"><span class="site-mark crypto"></span><span class="site-name">Rumanhua</span><span class="site-kind">HTML + AES</span></li>
+      </ul>
       <button type="button" class="btn-close" id="info-close">Tutup</button>
     </div>
   </div>
@@ -1505,6 +1552,10 @@
     <div class="series-sheet" role="dialog" aria-modal="true" aria-label="Pilih chapter">
       <div class="series-sheet-title" id="series-title">Memuat daftar chapter...</div>
       <p class="series-sheet-count" id="series-count"></p>
+
+      <div class="series-sort-row" id="series-sort-row" style="display:none">
+        <button type="button" class="btn-sort" id="series-sort">Urutan: terlama dulu</button>
+      </div>
 
       <div class="series-range-row" id="series-range-row" style="display:none">
         <span class="series-range-label">Dari</span>
@@ -1519,7 +1570,7 @@
         <button type="button" class="btn-bulk" id="series-select-none">Kosongkan</button>
       </div>
 
-      <button type="button" class="btn-save-series" id="series-save" style="display:none">💾 Simpan series ini</button>
+      <button type="button" class="btn-save-series" id="series-save" style="display:none">Simpan series ini</button>
 
       <div class="series-chapter-list" id="series-chapter-list" role="group" aria-label="Daftar chapter yang bisa dipilih">
         <div class="series-loading">Mengambil daftar chapter...</div>
@@ -1787,6 +1838,8 @@
     const seriesOverlay = document.getElementById('series-overlay');
     const seriesTitle = document.getElementById('series-title');
     const seriesCount = document.getElementById('series-count');
+    const seriesSortRow = document.getElementById('series-sort-row');
+    const seriesSortBtn = document.getElementById('series-sort');
     const seriesRangeRow = document.getElementById('series-range-row');
     const seriesRangeFrom = document.getElementById('series-range-from');
     const seriesRangeTo = document.getElementById('series-range-to');
@@ -1804,6 +1857,7 @@
     // (misal user salah paste series lain), render lama tidak nyasar ke
     // modal yang sudah berganti target series.
     let seriesChapters = [];
+    let seriesSortOrder = 'asc';
     let seriesLoadGeneration = 0;
     // Meta series yang terakhir berhasil dimuat (untuk tombol 💾 Simpan) —
     // diisi di fetchSeries(), dikosongkan tiap pemuatan baru/ditutup.
@@ -1877,9 +1931,69 @@
       seriesConfirm.disabled = checked === 0;
     }
 
-    function renderSeriesChapters(comicId, chapters){
+    function updateSeriesSortLabel(){
+      const asc = seriesSortOrder === 'asc';
+      seriesSortBtn.textContent = asc ? 'Urutan: terlama dulu' : 'Urutan: terbaru dulu';
+      seriesSortBtn.setAttribute('aria-label', asc
+        ? 'Urutan chapter terlama dulu. Klik untuk membalik.'
+        : 'Urutan chapter terbaru dulu. Klik untuk membalik.');
+    }
+
+    // Render ulang daftar sesuai seriesSortOrder. Checkbox memakai dataset.idx
+    // = index di array seriesChapters (ASLI), jadi centangan tidak berubah
+    // saat urutan dibalik, dan tombol rentang/Tambahkan tetap pakai index itu.
+    function renderChapterRows(){
+      const asc = seriesSortOrder === 'asc';
+      const indexed = seriesChapters.map((ch, idx) => ({ ch, idx }));
+      const chapterNo = (entry) => {
+        if (typeof entry.ch.chapter_num === 'number') return entry.ch.chapter_num;
+        return extractChapterNumber(entry.ch.chapter_title);
+      };
+      indexed.sort((a, b) => {
+        const an = chapterNo(a), bn = chapterNo(b);
+        const aNone = an === null, bNone = bn === null;
+        if (aNone !== bNone) return aNone ? 1 : -1; // tanpa nomor di akhir
+        if (!aNone && an !== bn) return asc ? an - bn : bn - an;
+        return a.idx - b.idx; // stabil untuk judul tanpa nomor / nomor sama
+      });
+
+      const checked = new Set(
+        Array.from(seriesChapterList.querySelectorAll('input[type="checkbox"]:checked'))
+          .map(cb => parseInt(cb.dataset.idx, 10))
+      );
+      const frag = document.createDocumentFragment();
+      indexed.forEach(({ ch, idx }) => {
+        const item = document.createElement('label');
+        item.className = 'series-chapter-item';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.dataset.idx = String(idx);
+        checkbox.checked = checked.has(idx);
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'series-chapter-item-title';
+        titleSpan.textContent = ch.chapter_title || `Chapter ${ch.chapter_id}`;
+        item.append(checkbox, titleSpan);
+        frag.appendChild(item);
+      });
+      seriesChapterList.replaceChildren(frag);
+      updateSeriesConfirmLabel();
+    }
+
+    seriesSortBtn.addEventListener('click', () => {
+      seriesSortOrder = seriesSortOrder === 'asc' ? 'desc' : 'asc';
+      updateSeriesSortLabel();
+      renderChapterRows();
+      showToast('info', seriesSortOrder === 'asc' ? 'Urutan: terlama dulu' : 'Urutan: terbaru dulu', 2000);
+    });
+
+    function renderSeriesChapters(comicId, chapters, source){
       seriesChapters = chapters;
+      // Default mengikuti kebiasaan sumber: HipMH dibuka dari chapter 1,
+      // sumber lain dari terbaru. Bisa dibalik kapan saja lewat tombol.
+      seriesSortOrder = source === 'hipmh' ? 'asc' : 'desc';
+      updateSeriesSortLabel();
       seriesCount.textContent = `${chapters.length} chapter ditemukan`;
+      seriesSortRow.style.display = chapters.length > 0 ? 'block' : 'none';
       seriesRangeRow.style.display = chapters.length > 0 ? 'flex' : 'none';
       seriesBulkRow.style.display = chapters.length > 0 ? 'flex' : 'none';
       seriesRangeFrom.value = '';
@@ -1893,31 +2007,7 @@
         updateSeriesConfirmLabel();
         return;
       }
-
-      // Urutan dari worker sudah sesuai sumber: HipMH = asc (chapter 1
-      // dulu), sumber lain = terbaru dulu. Dipertahankan apa adanya —
-      // tidak diurut ulang di sini.
-      const frag = document.createDocumentFragment();
-      chapters.forEach((ch, idx) => {
-        const item = document.createElement('label');
-        item.className = 'series-chapter-item';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.dataset.idx = String(idx);
-
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'series-chapter-item-title';
-        titleSpan.textContent = ch.chapter_title || `Chapter ${ch.chapter_id}`;
-
-        item.appendChild(checkbox);
-        item.appendChild(titleSpan);
-        frag.appendChild(item);
-      });
-
-      seriesChapterList.innerHTML = '';
-      seriesChapterList.appendChild(frag);
-      updateSeriesConfirmLabel();
+      renderChapterRows();
     }
 
     seriesChapterList.addEventListener('change', (e) => {
@@ -2036,6 +2126,7 @@
       openSeries();
       seriesTitle.textContent = 'Memuat daftar chapter...';
       seriesCount.textContent = '';
+      seriesSortRow.style.display = 'none';
       seriesRangeRow.style.display = 'none';
       seriesBulkRow.style.display = 'none';
       const loadingHint = document.createElement('div');
@@ -2068,7 +2159,7 @@
 
         const chapters = Array.isArray(data.chapters) ? data.chapters : [];
         seriesTitle.textContent = `Pilih Chapter — ${data.source || source}`;
-        renderSeriesChapters(comicId, chapters);
+        renderSeriesChapters(comicId, chapters, data.source || source);
 
         // Simpan meta untuk tombol 💾 — judul diambil dari respons series
         // (komik yang responsnya tanpa judul, mis. baozimh/wmanhua, fallback
