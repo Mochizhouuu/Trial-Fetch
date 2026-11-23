@@ -23,7 +23,7 @@
 // Regex diubah menerima subdomain apa pun (r2img., img., www., dst) supaya
 // allowlist tidak jadi penghambat; kalau challenge tetap memblokir egress
 // Worker, satu-satunya jalan adalah proxy browser-side atau ganti CDN lagi.
-const JJAPTOON_HOST_RE = /^(?:[\w-]+\.)*jjaptoon\d*\.(com|net|vip|xyz|top|me)$/;
+const JJAPTOON_HOST_RE = /^(?:www\.)?jjaptoon\d*\.(?:com|net|vip|xyz|top|me)$/;
 
 // KOREKSI 2 September 2026: sempat salah diasumsikan "jjaptoon berganti
 // nama total jadi jjabtoon" — TERNYATA SALAH. jjaptoon sempat error/down
@@ -691,13 +691,19 @@ async function handleHipmhUrl(request, targetUrl) {
     const status = { ongoing: "ongoing", completed: "completed", hiatus: "hiatus" }[info.status] || "";
     const synopsis = String(info.description || "");
 
-    // Kumpulkan semua chapter (paginasi, 50/halaman, terbaru dulu, batas 40 hal).
+    // Kumpulkan semua chapter (paginasi, 50/halaman, batas 40 hal).
+    // PENTING (sesuai referensi app Android TrialFetch/HipmhSource.kt):
+    // pakai `order=asc`, BUKAN `order=desc`. Endpoint desc pernah
+    // "menyisakan" chapter terbaru (total_pages sudah menunjuk tapi
+    // chapter baru tidak pernah muncul di hasil desc). Ambil ascending
+    // lalu urutkan di sini sesuai keinginan web: ascending (chapter 1
+    // dulu). Chapter tanpa nomor (番外/加更公告/预告) ditaruh di akhir.
     const chapters = [];
     const seen = new Set();
     let page = 1;
     let totalPages = 1;
     do {
-      const d = await hipmhApiGet(`/v1/manga/chapters?mid=${encodeURIComponent(mid)}&page=${page}&per_page=50&order=desc`);
+      const d = await hipmhApiGet(`/v1/manga/chapters?mid=${encodeURIComponent(mid)}&page=${page}&per_page=50&order=asc`);
       totalPages = parseInt(d.total_pages, 10) || 1;
       for (const el of (d.items || [])) {
         const o = el && typeof el === "object" ? el : {};
@@ -719,8 +725,12 @@ async function handleHipmhUrl(request, targetUrl) {
     if (chapters.length === 0) {
       return jsonResponse(request, { error: "Daftar chapter HipMH kosong", detail: mid }, 404);
     }
-    // urutkan terbaru -> terlama (numur besar dulu, fallback urutan asli)
-    chapters.sort((a, b) => (b.chapter_num || 0) - (a.chapter_num || 0));
+    // Ascending: nomor kecil dulu; chapter tanpa nomor di akhir (stable sort).
+    chapters.sort((a, b) => {
+      const an = a.chapter_num === null ? Number.POSITIVE_INFINITY : a.chapter_num;
+      const bn = b.chapter_num === null ? Number.POSITIVE_INFINITY : b.chapter_num;
+      return an - bn;
+    });
 
     return new Response(JSON.stringify({
       source: "hipmh",
@@ -2015,17 +2025,22 @@ export default {
         // di baris imgBaseUrl (sudah termasuk sub-folder {uuid}, diakhiri '/').
         if (!pasdMatch) {
           // Pola baru (Nov 2026): baris imgBaseUrl dipecah jadi dua —
-          //   var imgBaseUrl = 'https://image4.wmanhua.com/mh/{uuid}/' + ('{uuid}' || '{judul}') + '/';
-          // URL ASLI = prefix (dari string pertama, tanpa uuid sub-folder)
-          //           + segmen UUID dari `('{uuid}' || ...)` + '/'
-          // jadi base efektif-nya: `https://image4.wmanhua.com/mh/{uuid}/{uuid}/`
+          //   var imgBaseUrl = 'https://image4.wmanhua.com/mh/{uuid}/' + ('' || '{judul chapter}') + '/';
+          // Sub-folder KEDUA sekarang berupa JUMLAH JUDUL CHAPTER (bukan
+          // selalu UUID hex seperti dulu). Regex lama /[a-f0-9-]+/ hanya
+          // cocok UUID sehingga sub-folder judul terlewat -> semua gambar
+          // 404. Ambil alternatif pertama yang tidak kosong dari `a || b`
+          // lalu encodeURIComponent sebagai satu segmen path.
           const imgBaseLine = html.match(/var\s+imgBaseUrl\s*=\s*[^;]+/);
           if (imgBaseLine) {
             const prefixMatch = imgBaseLine[0].match(/https?:\/\/[^\s'"]+/);
-            const uuidMatch   = imgBaseLine[0].match(/\(\s*['"]([a-f0-9-]+)['"]/i);
+            const altMatch = imgBaseLine[0].match(/\(\s*['"]([^'"]*)['"]\s*\|\|\s*['"]([^'"]*)['"]\s*\)/);
             if (prefixMatch) {
               let b = prefixMatch[0];
-              if (uuidMatch) b += uuidMatch[1] + '/';
+              if (altMatch) {
+                const seg = altMatch[1] || altMatch[2];
+                if (seg) b += encodeURIComponent(seg) + '/';
+              }
               if (!b.endsWith('/')) b += '/';
               pasdMatch = [null, b];
             }
@@ -2973,19 +2988,28 @@ export default {
 // satu domain frontend tetap yang pasti dipakai buat tes. Nyalakan lagi
 // (isi domain frontend-nya) begitu fitur ini sudah matang dan mau dipindah
 // ke worker production.
-const ALLOWED_ORIGIN = null;  // dibuat null karena sedang masa percobaan
-
+// Frontend memanggil /proxy di origin yang SAMA, jadi tidak perlu CORS
+// lintas-origin. Sebelumnya ACAO="*" membuat endpoint ini bisa dipakai
+// situs mana pun (open proxy). Sekarang hanya origin trialfetch.pages.dev
+// (production & preview) yang diizinkan; server-side (tanpa Origin) tetap
+// bisa lewat Service Binding.
 function corsHeaders(request) {
-  let allowOrigin = "*";
-  if (ALLOWED_ORIGIN && request) {
-    const origin = request.headers.get("Origin") || "";
-    allowOrigin = origin === ALLOWED_ORIGIN ? origin : ALLOWED_ORIGIN;
-  }
-  return {
-    "Access-Control-Allow-Origin": allowOrigin,
+  const headers = {
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS,HEAD",
     "Access-Control-Allow-Headers": "*",
     "Access-Control-Expose-Headers": "*",
     "Cache-Control": "no-store"
   };
+  if (request) {
+    const origin = request.headers.get("Origin") || "";
+    try {
+      const host = new URL(origin).hostname;
+      if (host === "trialfetch.pages.dev" ||
+          host.endsWith(".trialfetch.pages.dev") ||
+          /-trialfetch\.pages\.dev$/.test(host)) {
+        headers["Access-Control-Allow-Origin"] = origin;
+      }
+    } catch { /* Origin bukan URL valid -> abaikan */ }
+  }
+  return headers;
 }

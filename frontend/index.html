@@ -21,8 +21,12 @@
   })();
 </script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"
+        integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"
+        integrity="sha384-PlRSzpewlarQuj5alIadXwjNUX+2eNMKwr0f07ShWYLy8B6TjEbm7ZlcN/ScSbwy"
+        crossorigin="anonymous"></script>
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
@@ -51,7 +55,7 @@
     --red-ink: #B03636;
 
     --ink: #3A3733;
-    --ink-soft: #8A857E;
+    --ink-soft: #6E6963;
     --outline: #B3AEA6;
     --overlay: rgba(58,55,51,0.45);
     --shadow: var(--outline);
@@ -70,6 +74,14 @@
        Semua panel/chip/card/modal pakai ini supaya tampilan bersih. */
     --shadow-soft: 0 1px 2px rgba(0,0,0,0.05), 0 10px 26px rgba(0,0,0,0.07);
     --shadow-softer: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-hover: 0 6px 18px rgba(0,0,0,0.09);
+    --shadow-red: 0 2px 10px rgba(232,93,93,0.35);
+    --shadow-green: 0 2px 8px rgba(125,190,144,0.4);
+    --on-primary: #FFFFFF;
+    --cta-red: #B03636;
+    --cta-green: #2F6B40;
+    --toggle-knob: #FFFFFF;
+    --toast-icon-bg: rgba(255,255,255,0.25);
     --border-soft: 1px solid var(--outline);
   }
 
@@ -113,6 +125,14 @@
 
     --shadow-soft: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px rgba(0,0,0,0.4);
     --shadow-softer: 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-hover: 0 6px 18px rgba(0,0,0,0.35);
+    --shadow-red: 0 2px 10px rgba(232,93,93,0.3);
+    --shadow-green: 0 2px 8px rgba(125,190,144,0.3);
+    --on-primary: #FFFFFF;
+    --cta-red: #A83232;
+    --cta-green: #356B45;
+    --toggle-knob: #FFFFFF;
+    --toast-icon-bg: rgba(255,255,255,0.2);
     --border-soft: 1px solid var(--outline);
   }
 
@@ -177,7 +197,7 @@
     color: var(--on-accent);
   }
 
-  header{ text-align: center; margin-bottom: 30px; }
+  header{ text-align: center; margin-bottom: 24px; }
 
   /* ============================================================
      TAB NAVIGASI (Ambil / Cari / Tersimpan / Antrean)
@@ -268,8 +288,8 @@
   h1{
     font-family: 'Baloo 2', sans-serif;
     font-weight: 800;
-    font-size: clamp(34px, 6vw, 54px);
-    letter-spacing: 0.5px;
+    font-size: clamp(28px, 5vw, 40px);
+    letter-spacing: 0;
     margin: 0;
     color: var(--title-color);
     transition: color .25s ease;
@@ -362,7 +382,7 @@
     background: var(--ink); transition: left .15s ease;
   }
   .mini-toggle input:checked + .mini-toggle-box{ background: var(--blue); }
-  .mini-toggle input:checked + .mini-toggle-box::after{ left: 14px; background: #fff; }
+  .mini-toggle input:checked + .mini-toggle-box::after{ left: 14px; background: var(--toggle-knob); }
   .mini-toggle input:focus-visible + .mini-toggle-box{ box-shadow: 0 0 0 3px var(--blue); }
   .mini-toggle-note{ opacity: .75; }
 
@@ -370,23 +390,23 @@
     font-weight: 700;
     font-size: 14px;
     letter-spacing: .5px;
-    color: #FFFFFF;
-    background: var(--red-deep);
+    color: var(--on-primary);
+    background: var(--cta-red);
     padding: 0 22px;
-    box-shadow: 0 2px 10px rgba(232,93,93,0.35);
+    box-shadow: var(--shadow-red);
     white-space: nowrap;
     border: none;
   }
 
   .btn-fetch:hover{
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(232,93,93,0.45);
+    box-shadow: var(--shadow-red);
     filter: brightness(1.05);
   }
 
   .btn-fetch:active{
     transform: translateY(0);
-    box-shadow: 0 1px 4px rgba(232,93,93,0.4);
+    box-shadow: var(--shadow-red);
   }
 
   .btn-reset{
@@ -482,7 +502,7 @@
 
   .chip-row:hover{
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.09);
+    box-shadow: var(--shadow-hover);
   }
 
   .chip-head{ display: flex; align-items: center; gap: 10px; }
@@ -514,11 +534,6 @@
     flex-shrink: 0;
   }
 
-  .chip-badge.goodtoon{ background: var(--blue-strong); }
-   .chip-badge.baozimh{ background: var(--yellow); }
-  .chip-badge.wmanhua{ background: var(--purple); }
-  .chip-badge.rumanhua{ background: var(--pink-deep); }
-  .chip-badge.manwang{ background: var(--yellow-deep); }
 
   .chip-status{
     margin-left: auto;
@@ -534,7 +549,7 @@
   .chip-status.active{ color: var(--red-deep); font-weight: 700; }
   .chip-status.error{ color: var(--red-ink); font-weight: 700; }
 
-  .chip-row.error{ border-color: var(--red); box-shadow: 0 4px 14px rgba(232,93,93,0.18); }
+  .chip-row.error{ border-color: var(--red); box-shadow: var(--shadow-red); }
 
   .chip-body{ min-width: 0; }
 
@@ -574,17 +589,17 @@
     font-weight: 700;
     font-size: 13px;
     letter-spacing: .3px;
-    color: #FFFFFF;
-    background: var(--green-deep);
+    color: var(--on-primary);
+    background: var(--cta-green);
     border: none;
     border-radius: 10px;
     padding: 9px 16px;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(125,190,144,0.4);
+    box-shadow: var(--shadow-green);
     width: 100%;
   }
-  .btn-dl-mini:hover{ transform: translateY(-1px); box-shadow: 0 4px 12px rgba(125,190,144,0.5); }
-  .btn-dl-mini:active{ transform: translateY(0); box-shadow: 0 1px 4px rgba(125,190,144,0.4); }
+  .btn-dl-mini:hover{ transform: translateY(-1px); box-shadow: var(--shadow-green); }
+  .btn-dl-mini:active{ transform: translateY(0); box-shadow: var(--shadow-green); }
   .btn-dl-mini:disabled{
     opacity: .5; cursor: not-allowed;
     transform: none !important;
@@ -689,7 +704,7 @@
     font-size: 13px;
     border: none;
     border-radius: 50%;
-    background: rgba(255,255,255,0.25);
+    background: var(--toast-icon-bg);
     color: var(--toast-ink);
   }
 
@@ -788,11 +803,6 @@
     font-weight: 600;
   }
 
-  .site-chip:nth-child(2){ background: var(--pink); }
-  .site-chip:nth-child(3){ background: var(--blue); }
-  .site-chip:nth-child(4){ background: var(--purple); }
-  .site-chip:nth-child(5){ background: var(--green); }
-  .site-chip:nth-child(7){ background: var(--yellow); }
 
   .btn-close{
     width: 100%;
@@ -1190,7 +1200,7 @@
     background: var(--card);
     box-shadow: none;
   }
-  .btn-del:hover{ background: var(--red); color: #FFFFFF; }
+  .btn-del:hover{ background: var(--red); color: var(--on-primary); }
   .btn-del:active{ transform: translateY(1px); }
 
   .btn-save-series{
@@ -1198,7 +1208,7 @@
     font-size: 13px;
     font-weight: 700;
     padding: 10px;
-    color: #3A3733;
+    color: var(--ink);
     background: var(--yellow);
     box-shadow: none;
     margin-bottom: 12px;
@@ -1643,7 +1653,7 @@
     themeToggle.addEventListener('click', () => {
       const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
       applyTheme(next);
-      showToast('info', next === 'dark' ? 'Mode gelap aktif 🌙' : 'Mode terang aktif ☀️', 2200);
+      showToast('info', next === 'dark' ? 'Mode gelap aktif' : 'Mode terang aktif', 2200);
     });
 
     // Toggle pemotong banner Baozimh — tersimpan lokal, default aktif.
@@ -1656,7 +1666,7 @@
     if (baozimhCropNote) baozimhCropNote.textContent = '(OpenCV, lokal)';
     baozimhCropToggle.addEventListener('change', () => {
       try { localStorage.setItem('tf-baozimh-crop', baozimhCropToggle.checked ? '1' : '0'); } catch(e) {}
-      showToast('info', baozimhCropToggle.checked ? 'Potong banner Baozimh: aktif ✂️' : 'Potong banner Baozimh: nonaktif — halaman disimpan utuh.', 2200);
+      showToast('info', baozimhCropToggle.checked ? 'Potong banner Baozimh: aktif' : 'Potong banner Baozimh: nonaktif — halaman disimpan utuh.', 2200);
     });
 
     if (window.matchMedia) {
@@ -1708,13 +1718,21 @@
     function showToast(type, message, duration = 4000){
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
-      toast.innerHTML = `
-        <span class="toast-icon">${TOAST_ICONS[type] || 'i'}</span>
-        <span class="toast-msg"></span>
-        <button type="button" class="toast-close" aria-label="Tutup notifikasi">✕</button>
-        <span class="toast-bar" style="animation-duration:${duration}ms"></span>
-      `;
-      toast.querySelector('.toast-msg').textContent = message;
+      const icon = document.createElement('span');
+      icon.className = 'toast-icon';
+      icon.textContent = TOAST_ICONS[type] || 'i';
+      const msg = document.createElement('span');
+      msg.className = 'toast-msg';
+      msg.textContent = message;
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'toast-close';
+      close.setAttribute('aria-label', 'Tutup notifikasi');
+      close.textContent = '✕';
+      const bar = document.createElement('span');
+      bar.className = 'toast-bar';
+      bar.style.animationDuration = `${duration}ms`;
+      toast.append(icon, msg, close, bar);
       toastContainer.appendChild(toast);
 
       const dismiss = () => {
@@ -1723,7 +1741,7 @@
       };
 
       const timer = setTimeout(dismiss, duration);
-      toast.querySelector('.toast-close').addEventListener('click', () => {
+      close.addEventListener('click', () => {
         clearTimeout(timer);
         dismiss();
       });
@@ -1868,13 +1886,17 @@
       seriesRangeTo.value = '';
 
       if (chapters.length === 0) {
-        seriesChapterList.innerHTML = '<div class="series-loading">Tidak ada chapter ditemukan.</div>';
+        const emptyHint = document.createElement('div');
+        emptyHint.className = 'series-loading';
+        emptyHint.textContent = 'Tidak ada chapter ditemukan.';
+        seriesChapterList.replaceChildren(emptyHint);
         updateSeriesConfirmLabel();
         return;
       }
 
-      // Chapter dari worker sudah terurut terbaru -> terlama; dipertahankan
-      // apa adanya sesuai kesepakatan (bukan diurut ulang di sini).
+      // Urutan dari worker sudah sesuai sumber: HipMH = asc (chapter 1
+      // dulu), sumber lain = terbaru dulu. Dipertahankan apa adanya —
+      // tidak diurut ulang di sini.
       const frag = document.createDocumentFragment();
       chapters.forEach((ch, idx) => {
         const item = document.createElement('label');
@@ -2016,7 +2038,10 @@
       seriesCount.textContent = '';
       seriesRangeRow.style.display = 'none';
       seriesBulkRow.style.display = 'none';
-      seriesChapterList.innerHTML = '<div class="series-loading">Mengambil daftar chapter...</div>';
+      const loadingHint = document.createElement('div');
+      loadingHint.className = 'series-loading';
+      loadingHint.textContent = 'Mengambil daftar chapter...';
+      seriesChapterList.replaceChildren(loadingHint);
       seriesConfirm.disabled = true;
       seriesConfirm.textContent = 'Tambahkan (0)';
       seriesSave.style.display = 'none';
@@ -2146,7 +2171,10 @@
 
     function renderSearchLoading() {
       searchResults.style.display = 'flex';
-      searchResults.innerHTML = '<div class="search-hint">Mencari...</div>';
+      const searchHint = document.createElement('div');
+      searchHint.className = 'search-hint';
+      searchHint.textContent = 'Mencari...';
+      searchResults.replaceChildren(searchHint);
     }
 
     function renderSearchResults(items, query) {
@@ -2174,14 +2202,14 @@
           img.addEventListener('error', () => {
             const ph = document.createElement('div');
             ph.className = 'search-item-noimg';
-            ph.textContent = '📖';
+            ph.textContent = '';
             row.replaceChild(ph, img);
           });
           row.appendChild(img);
         } else {
           const ph = document.createElement('div');
           ph.className = 'search-item-noimg';
-          ph.textContent = '📖';
+          ph.textContent = '';
           row.appendChild(ph);
         }
 
@@ -2356,14 +2384,14 @@
           coverImg.addEventListener('error', () => {
             const ph = document.createElement('div');
             ph.className = 'saved-cover-ph';
-            ph.textContent = '📖';
+            ph.textContent = '';
             top.replaceChild(ph, coverImg);
           });
           top.appendChild(coverImg);
         } else {
           const ph = document.createElement('div');
           ph.className = 'saved-cover-ph';
-          ph.textContent = '📖';
+          ph.textContent = '';
           top.appendChild(ph);
         }
         top.appendChild(body);
@@ -2756,26 +2784,38 @@
       chipSeq += 1;
       const id = `chip-${chipSeq}`;
 
-      const row = document.createElement('div');
-      row.className = 'chip-row';
+      const mk = (tag, cls, text) => {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text !== undefined) n.textContent = text;
+        return n;
+      };
+      const row = mk('div', 'chip-row');
       row.id = id;
-      row.innerHTML = `
-        <div class="chip-head">
-          <span class="chip-num">${chipSeq}</span>
-          <span class="chip-badge" style="display:none"></span>
-          <span class="chip-status">fetching</span>
-        </div>
-        <div class="chip-body">
-          <p class="chip-comic-title">Memuat…</p>
-          <p class="chip-chapter-title" style="display:none"></p>
-          <p class="chip-page-count" style="display:none"></p>
-        </div>
-        <div class="chip-progress-row">
-          <div class="progress-mini"><div style="width:0%"></div></div>
-        </div>
-        <button type="button" class="btn-dl-mini" style="display:none">Unduh</button>
-        <div class="chip-thumbs" style="display:none"></div>
-      `;
+      const head = mk('div', 'chip-head');
+      const num = mk('span', 'chip-num', String(chipSeq));
+      const badge = mk('span', 'chip-badge');
+      badge.style.display = 'none';
+      head.append(num, badge, mk('span', 'chip-status', 'fetching'));
+      const body = mk('div', 'chip-body');
+      const comicTitle = mk('p', 'chip-comic-title', 'Memuat…');
+      const chapterTitle = mk('p', 'chip-chapter-title');
+      chapterTitle.style.display = 'none';
+      const pageCount = mk('p', 'chip-page-count');
+      pageCount.style.display = 'none';
+      body.append(comicTitle, chapterTitle, pageCount);
+      const progressRow = mk('div', 'chip-progress-row');
+      const track = mk('div', 'progress-mini');
+      const fill = mk('div');
+      fill.style.width = '0%';
+      track.appendChild(fill);
+      progressRow.appendChild(track);
+      const dlBtn = mk('button', 'btn-dl-mini', 'Unduh');
+      dlBtn.type = 'button';
+      dlBtn.style.display = 'none';
+      const thumbs = mk('div', 'chip-thumbs');
+      thumbs.style.display = 'none';
+      row.append(head, body, progressRow, dlBtn, thumbs);
       chapterList.prepend(row);
       refreshQueueMeta();
       return row;
