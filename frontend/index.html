@@ -120,11 +120,14 @@
     --title-color: var(--pink);
     --title-shadow: #6E2F49;
 
-    --toast-success-bg: #33503C;
-    --toast-error-bg: #5A3434;
-    --toast-info-bg: #2E4A5C;
-    --toast-warning-bg: #54481F;
-    --toast-ink: #F2EEE7;
+    /* Toast ikut keluarga pastel yang sama dengan tema (versi sedikit
+       lebih dalam supaya tidak silau di dark mode). Teks gelap dipakai
+       di kedua tema agar konsisten & tidak "aneh". */
+    --toast-success-bg: #A9D4B4;
+    --toast-error-bg: #E8AFAF;
+    --toast-info-bg: #A9CFE5;
+    --toast-warning-bg: #E8D38A;
+    --toast-ink: #2A2724;
 
     --shadow-soft: 0 1px 2px rgba(0,0,0,0.3), 0 12px 32px rgba(0,0,0,0.4);
     --shadow-softer: 0 1px 2px rgba(0,0,0,0.2);
@@ -136,7 +139,7 @@
     --cta-red: #A83232;
     --cta-green: #356B45;
     --toggle-knob: #FFFFFF;
-    --toast-icon-bg: rgba(255,255,255,0.2);
+    --toast-icon-bg: rgba(0,0,0,0.10);
     --border-soft: 1px solid var(--outline);
   }
 
@@ -734,7 +737,7 @@
     left: 0; bottom: 0;
     height: 4px;
     width: 100%;
-    background: var(--ink);
+    background: var(--on-pastel);
     opacity: .35;
     transform-origin: left;
     animation: toast-bar linear forwards;
@@ -1246,7 +1249,7 @@
     background: var(--card);
     box-shadow: none;
   }
-  .btn-del:hover{ background: var(--red); color: var(--on-primary); }
+  .btn-del:hover{ background: var(--cta-red); color: var(--on-primary); }
   .btn-del:active{ transform: translateY(1px); }
 
   .btn-save-series{
@@ -1255,7 +1258,6 @@
     font-size: 13px;
     font-weight: 700;
     padding: 10px;
-    color: var(--ink);
     background: var(--yellow);
     box-shadow: none;
     margin-bottom: 12px;
@@ -2158,7 +2160,8 @@
         if (myGeneration !== seriesLoadGeneration) return;
 
         const chapters = Array.isArray(data.chapters) ? data.chapters : [];
-        seriesTitle.textContent = `Pilih Chapter — ${data.source || source}`;
+        const srcKey = data.source || source;
+        seriesTitle.textContent = `Pilih Chapter — ${SOURCE_LABELS[srcKey] || srcKey}`;
         renderSeriesChapters(comicId, chapters, data.source || source);
 
         // Simpan meta untuk tombol 💾 — judul diambil dari respons series
@@ -2869,6 +2872,10 @@
     }
 
     const SOURCE_BADGE_CLASS = { goodtoon: 'goodtoon', baozimh: 'baozimh', wmanhua: 'wmanhua', hipmh: 'hipmh' };
+    const SOURCE_LABELS = {
+      baozimh: 'Baozimh', wmanhua: 'Wmanhua', hipmh: 'HipMH',
+      goodtoon: 'GoodToon', manwang: 'Manwang', rumanhua: 'Rumanhua'
+    };
     const MAX_THUMBS = (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) ? 3 : 8;
 
     function createChip() {
