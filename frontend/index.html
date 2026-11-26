@@ -2571,7 +2571,14 @@
       });
       updateTabLabel();
       if (pushHash) {
-        try { history.replaceState(null, '', '#' + name); } catch (e) {}
+        // Tab default ("Ambil") pakai URL bersih — tidak perlu #ambil.
+        // Tab lain dapat hash pendek supaya bisa dibagikan.
+        try {
+          const url = name === 'ambil'
+            ? location.pathname + location.search
+            : '#' + name;
+          history.replaceState(null, '', url);
+        } catch (e) {}
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -2656,6 +2663,10 @@
       try {
         const initial = (location.hash || '').replace('#', '');
         if (TAB_PAGES[initial]) switchTab(initial, false);
+        window.addEventListener('hashchange', () => {
+          const h = (location.hash || '').replace('#', '');
+          switchTab(TAB_PAGES[h] ? h : 'ambil', false);
+        });
       } catch (e) { /* biarkan tab default Ambil */ }
     })();
 
