@@ -525,7 +525,13 @@ async function hipmhApiGet(path) {
   headers.set("Accept", "application/json, text/plain, */*");
   headers.set("X-Requested-With", "XMLHttpRequest");
   headers.set("Referer", HIPMH_BASE);
-  const res = await safeFetch(HIPMH_API + path, { method: "GET", headers });
+  // API HipMH di belakang CDN: respons lama bisa tersimpan berminggu-minggu
+  // (terbukti daftar chapter tetap 133 padahal chapter 134 sudah rilis).
+  // Tambahkan cache-buster berbasis bucket 5 menit: cukup segar untuk
+  // chapter baru, tapi URL masih stabil 5 menit sehingga CDN tetap cache.
+  const sep = path.includes("?") ? "&" : "?";
+  const cacheBust = Math.floor(Date.now() / 300000);
+  const res = await safeFetch(HIPMH_API + path + sep + "_t=" + cacheBust, { method: "GET", headers });
   if (!res.ok) throw new Error(`HTTP ${res.status} pada API HipMH ${path}`);
   let json;
   try { json = await res.json(); }
@@ -731,17 +737,20 @@ async function handleHipmhUrl(request, targetUrl) {
         if (!hid || seen.has(hid)) continue;
         seen.add(hid);
         const t = String(o.title || "").trim();
-        // Nomor chapter: digit Arab dulu, lalu angka Han/Kanji
-        // ("第七十九话" = 79). Tanpa nomor (mis. "天使，快人一步"
-        // yang justru chapter TERBARU) dibiarkan null — frontend akan
-        // memperlakukannya sebagai "paling baru" sesuai arah urutan.
+        // GUNAKAN NOMOR RESMI DARI API, jangan tebak dari judul.
+        // Judul bisa tanpa angka ("天使，快人一步" = chapter 133) atau
+        // pakai angka Han ("第七十九话" = 79). Keduanya punya field
+        // chapter_number dari API. Menebak dari judul dulu membuat
+        // chapter 133 terlempar ke urutan terakhir setelah 134.
+        const apiNum = Number(o.chapter_number);
         const numM = t.match( /(\d+)/ );
         const hanM = !numM ? t.match( /第([零一二两三四五六七八九十百]+)[话話]/ ) : null;
         chapters.push({
           chapter_id: hid,
           chapter_title: t || `Chapter ${chapters.length + 1}`,
-          chapter_num: numM ? parseInt(numM[1], 10)
-                     : (hanM ? hipmhHanNumber(hanM[1]) : null),
+          chapter_num: o.chapter_number !== null && Number.isFinite(apiNum) ? apiNum
+                     : (numM ? parseInt(numM[1], 10)
+                     : (hanM ? hipmhHanNumber(hanM[1]) : null)),
           url: `${HIPMH_BASE}/chapter/go?hid=${encodeURIComponent(hid)}`
         });
       }
