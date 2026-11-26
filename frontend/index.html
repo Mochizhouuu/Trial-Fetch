@@ -2570,16 +2570,6 @@
         document.getElementById(id).classList.toggle('active', key === name);
       });
       updateTabLabel();
-      if (pushHash) {
-        // Tab default ("Ambil") pakai URL bersih — tidak perlu #ambil.
-        // Tab lain dapat hash pendek supaya bisa dibagikan.
-        try {
-          const url = name === 'ambil'
-            ? location.pathname + location.search
-            : '#' + name;
-          history.replaceState(null, '', url);
-        } catch (e) {}
-      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -2657,16 +2647,16 @@
       });
     })();
 
-    // Tab awal mengikuti hash URL (#cari, #simpan, #antrean) kalau ada —
-    // default-nya Ambil.
-    (function initTabFromHash() {
+    // URL selalu bersih: tidak ada hash untuk tab mana pun. Kalau ada
+    // link lama bertanda #cari/#simpan/#antrean, tab itu tetap dibuka,
+    // lalu hash-nya dibuang dari address bar.
+    (function initTabFromOldHash() {
       try {
         const initial = (location.hash || '').replace('#', '');
         if (TAB_PAGES[initial]) switchTab(initial, false);
-        window.addEventListener('hashchange', () => {
-          const h = (location.hash || '').replace('#', '');
-          switchTab(TAB_PAGES[h] ? h : 'ambil', false);
-        });
+        if (location.hash) {
+          history.replaceState(null, '', location.pathname + location.search);
+        }
       } catch (e) { /* biarkan tab default Ambil */ }
     })();
 
