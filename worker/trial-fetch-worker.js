@@ -635,6 +635,26 @@ function hipmhDecoyIndex(size, orderId, sid) {
   return idx >= 0 && idx < size ? idx : null;
 }
 
+// Angka Han/Kanji pada judul chapter (mis. "第七十九话" -> 79).
+// Sama dengan chineseNumToInt() di frontend supaya urutan worker & UI
+// konsisten — sebelumnya chapter seperti ini jadi null dan terlempar
+// ke akhir daftar walaupun nomornya 79.
+function hipmhHanNumber(str) {
+  if (!str) return null;
+  const digits = { '零':0, '一':1, '二':2, '两':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9 };
+  const units  = { '十':10, '百':100 };
+  if (str.length === 1 && str in digits) return digits[str];
+  let total = 0;
+  let lastDigit = null;
+  for (const ch of str) {
+    if (ch in digits) lastDigit = digits[ch];
+    else if (ch in units) { total += (lastDigit === null ? 1 : lastDigit) * units[ch]; lastDigit = null; }
+    else return null;
+  }
+  if (lastDigit !== null) total += lastDigit;
+  return total;
+}
+
 // Resolve hid frontend (b64url("m:<mid>-c:<cid>")-suffix) ke api-hid
 // (b64url("c:<cid>")-suffix). html reader memuat `data-api-hid`.
 async function hipmhResolveApiHid(frontendHid) {
@@ -711,11 +731,17 @@ async function handleHipmhUrl(request, targetUrl) {
         if (!hid || seen.has(hid)) continue;
         seen.add(hid);
         const t = String(o.title || "").trim();
+        // Nomor chapter: digit Arab dulu, lalu angka Han/Kanji
+        // ("第七十九话" = 79). Tanpa nomor (mis. "天使，快人一步"
+        // yang justru chapter TERBARU) dibiarkan null — frontend akan
+        // memperlakukannya sebagai "paling baru" sesuai arah urutan.
         const numM = t.match( /(\d+)/ );
+        const hanM = !numM ? t.match( /第([零一二两三四五六七八九十百]+)[话話]/ ) : null;
         chapters.push({
           chapter_id: hid,
           chapter_title: t || `Chapter ${chapters.length + 1}`,
-          chapter_num: numM ? parseInt(numM[1], 10) : null,
+          chapter_num: numM ? parseInt(numM[1], 10)
+                     : (hanM ? hipmhHanNumber(hanM[1]) : null),
           url: `${HIPMH_BASE}/chapter/go?hid=${encodeURIComponent(hid)}`
         });
       }

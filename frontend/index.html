@@ -1954,7 +1954,13 @@
       indexed.sort((a, b) => {
         const an = chapterNo(a), bn = chapterNo(b);
         const aNone = an === null, bNone = bn === null;
-        if (aNone !== bNone) return aNone ? 1 : -1; // tanpa nomor di akhir
+        // Chapter tanpa nomor (mis. "天使，快人一步") adalah chapter
+        // TERBARU — API menaruhnya paling depan di order=desc dan paling
+        // belakang di order=asc. Jadi posisinya mengikuti arah urutan:
+        // asc -> di akhir, desc -> di depan. Sebelumnya selalu di akhir,
+        // sehingga saat mode "terbaru dulu" chapter terbaru malah nyangkut
+        // di bawah chapter 1.
+        if (aNone !== bNone) return asc ? (aNone ? 1 : -1) : (aNone ? -1 : 1);
         if (!aNone && an !== bn) return asc ? an - bn : bn - an;
         return a.idx - b.idx; // stabil untuk judul tanpa nomor / nomor sama
       });
