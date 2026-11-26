@@ -1962,7 +1962,10 @@
         // di bawah chapter 1.
         if (aNone !== bNone) return asc ? (aNone ? 1 : -1) : (aNone ? -1 : 1);
         if (!aNone && an !== bn) return asc ? an - bn : bn - an;
-        return a.idx - b.idx; // stabil untuk judul tanpa nomor / nomor sama
+        // Nomor sama (mis. "第70话" vs "第70话完结篇"): urutan asli dari
+        // worker mengikuti sumber (umumnya asc), jadi di mode desc dibalik
+        // supaya entri yang lebih baru tetap di depan.
+        return asc ? a.idx - b.idx : b.idx - a.idx;
       });
 
       const checked = new Set(
