@@ -801,12 +801,13 @@ async function handleHipmhUrl(request, targetUrl) {
     return jsonResponse(request, { error: "Chapter HipMH tidak berisi gambar", detail: apiHid }, 404);
   }
   const images = hipmhDecodeImages(encoded);
-  const orderId = Number(d.order_id) || 0;
-  const sid = Number(d.sid) || 0;
-  const decoyIdx = hipmhDecoyIndex(images.length, orderId, sid);
-  if (decoyIdx !== null) images.splice(decoyIdx, 1);
+  // Jangan buang entri apa pun. Respons API dibuat acak tiap request
+  // (order_id & susunan berubah), sehingga "decoy" tidak bisa ditebak
+  // reliabel — menghapus indeks yang salah justru membuang gambar asli
+  // dan menyisakan placeholder 1x1. Aplikasi Android juga mengirim
+  // semua gambar mentah (226 halaman untuk chapter ini).
   if (images.length === 0) {
-    return jsonResponse(request, { error: "Chapter HipMH kosong setelah buang decoy" }, 404);
+    return jsonResponse(request, { error: "Chapter HipMH kosong" }, 404);
   }
   const imgBase = Number(d.line) === 9 ? HIPMH_IMG_BASE_S1 : HIPMH_IMG_BASE;
   const comicImages = images.map((p, i) => ({
